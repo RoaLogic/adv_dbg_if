@@ -1,0 +1,144 @@
+//////////////////////////////////////////////////////////////////////
+////                                                              ////
+////  adbg_jsp_wb_module.sv                                       ////
+////                                                              ////
+////                                                              ////
+////  This file is part of the SoC Advanced Debug Interface.      ////
+////                                                              ////
+////  Author(s):                                                  ////
+////       Nathan Yawn (nathan.yawn@opencores.org)                ////
+////       Richard Herveille (richard.herveille@roalogic.com)     ////
+////                                                              ////
+//////////////////////////////////////////////////////////////////////
+////                                                              ////
+//// Copyright (C) 2010 - 2015 Authors                            ////
+////                                                              ////
+//// This source file may be used and distributed without         ////
+//// restriction provided that this copyright statement is not    ////
+//// removed from the file and that any derivative work contains  ////
+//// the original copyright notice and the associated disclaimer. ////
+////                                                              ////
+//// This source file is free software; you can redistribute it   ////
+//// and/or modify it under the terms of the GNU Lesser General   ////
+//// Public License as published by the Free Software Foundation; ////
+//// either version 2.1 of the License, or (at your option) any   ////
+//// later version.                                               ////
+////                                                              ////
+//// This source is distributed in the hope that it will be       ////
+//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
+//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
+//// PURPOSE.  See the GNU Lesser General Public License for more ////
+//// details.                                                     ////
+////                                                              ////
+//// You should have received a copy of the GNU Lesser General    ////
+//// Public License along with this source; if not, download it   ////
+//// from http://www.opencores.org/lgpl.shtml                     ////
+////                                                              ////
+//////////////////////////////////////////////////////////////////////
+
+
+// Module interface
+module adbg_jsp_wb_module 
+#(
+  parameter ADDR_WIDTH = 32,
+  parameter DATA_WIDTH = 32
+)
+(
+  input  rst_i,
+
+  // JTAG signals
+  input  tck_i,
+  input  tdi_i,
+  output module_tdo_o,
+
+  // TAP states
+  input capture_dr_i,
+        shift_dr_i,
+        update_dr_i,
+
+  input [adbg_jsp_pkg::DBG_JSP_DATAREG_LEN-1:0] data_register_i,  // the data register is at top level, shared between all modules
+  input                                         module_select_i,
+  output                                        top_inhibit_o,
+
+  // WISHBONE slave interface
+  input                     wb_clk_i,
+                            wb_rst_i,
+  input                     wb_cyc_i,
+  input                     wb_stb_i,
+  input                     wb_we_i,
+  input  [ADDR_WIDTH  -1:0] wb_adr_i,
+  input  [DATA_WIDTH/8-1:0] wb_sel_i,
+  input  [DATA_WIDTH  -1:0] wb_dat_i,
+  output [DATA_WIDTH  -1:0] wb_dat_o,
+  output                    wb_ack_o,
+                            wb_err_o,
+  output                    int_o 
+);
+  
+  //////////////////////////////////////////////////////////////////
+  //
+  // Constants
+  //
+  import adbg_jsp_pkg::*;
+
+
+  //////////////////////////////////////////////////////////////////
+  //
+  // Variables
+  //
+  logic       biu_clk,
+              biu_rst;
+  logic [7:0] biu_di,
+              biu_do;
+  logic [3:0] biu_bytes_available,
+              biu_space_available;
+  logic       biu_rd_strobe,
+              biu_wr_strobe; 
+
+
+  //////////////////////////////////////////////////////////////////
+  //
+  // Module body
+  //
+
+  /*
+   * Hookup JSP Debug Core
+   */
+  adbg_jsp_module_core
+  jsp_core_inst
+  (
+    .*
+  );
+
+  /*
+   * Hookup JSP Wishbone Interface
+   */
+  adbg_jsp_wb_biu
+  jsp_biu_inst (
+    // Debug interface signals
+    .tck_i             ( biu_clk             ),
+    .rst_i             ( biu_rst             ),
+    .data_i            ( biu_di              ),
+    .data_o            ( biu_do              ),
+    .bytes_available_o ( biu_bytes_available ),
+    .bytes_free_o      ( biu_space_available ),
+    .rd_strobe_i       ( biu_rd_strobe       ),
+    .wr_strobe_i       ( biu_wr_strobe       ),
+			   
+    // Wishbone slave signals
+    .wb_clk_i        (wb_clk_i),
+    .wb_rst_i        (wb_rst_i),
+    .wb_adr_i        (wb_adr_i),
+    .wb_dat_o        (wb_dat_o),
+    .wb_dat_i        (wb_dat_i),
+    .wb_cyc_i        (wb_cyc_i),
+    .wb_stb_i        (wb_stb_i),
+    .wb_sel_i        (wb_sel_i),
+    .wb_we_i         (wb_we_i),
+    .wb_ack_o        (wb_ack_o),
+    .wb_err_o        (wb_err_o),
+    .int_o           (int_o)
+   );
+
+endmodule
+
