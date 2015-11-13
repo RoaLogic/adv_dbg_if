@@ -65,7 +65,7 @@ module adbg_jsp_module_core
   input  [                                  7:0] biu_do,               // data from BIU
   input  [                                  3:0] biu_space_available,
   input  [                                  3:0] biu_bytes_available,
-  output logic                                        biu_rd_strobe,        // Indicates that the BIU should ACK last read operation + start another
+  output logic                                   biu_rd_strobe,        // Indicates that the BIU should ACK last read operation + start another
                                                  biu_wr_strobe         // Indicates BIU should latch input + begin a write operation
 );
   

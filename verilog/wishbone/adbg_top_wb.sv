@@ -83,10 +83,9 @@ module adbg_top_wb #(
   input                     wb_jsp_cyc_i,
   input                     wb_jsp_stb_i,
   input                     wb_jsp_we_i,
-  input  [ADDR_WIDTH  -1:0] wb_jsp_adr_i,
-  input  [DATA_WIDTH/8-1:0] wb_jsp_sel_i,
-  output [DATA_WIDTH  -1:0] wb_jsp_dat_o,
-  input  [DATA_WIDTH  -1:0] wb_jsp_dat_i,
+  input  [             2:0] wb_jsp_adr_i,
+  output [             7:0] wb_jsp_dat_o,
+  input  [             7:0] wb_jsp_dat_i,
   output                    wb_jsp_ack_o,
   output                    wb_jsp_err_o,
   output                    int_o,
@@ -260,11 +259,10 @@ adbg_jsp_wb_module i_dbg_jsp (
   .wb_dat_i         ( wb_jsp_dat_i ),
   .wb_cyc_i         ( wb_jsp_cyc_i ),
   .wb_stb_i         ( wb_jsp_stb_i ),
-  .wb_sel_i         ( wb_jsp_sel_i ),
   .wb_we_i          ( wb_jsp_we_i  ),
   .wb_ack_o         ( wb_jsp_ack_o ),
   .wb_err_o         ( wb_jsp_err_o ),
- .int_o             (int_o         )
+ .int_o             ( int_o        )
 );
    
  

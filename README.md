@@ -12,7 +12,8 @@ Changes compared to the Opencores version:
 - Added support for non-32bit bus interfaces
 
 ToDo:
-- More cleaning up to do
+- More cleaning up to do (resets, general code, ...)
 - More work to do on the JTAG Serial Port
-	- Move to 8bit interface, instead of current 32bit interface
+	- Move to 8bit interface, instead of current 32bit interface (done)
 	- Add support for alternative bus interfaces
+- Read hardware tests

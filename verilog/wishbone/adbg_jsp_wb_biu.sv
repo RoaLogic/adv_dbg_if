@@ -49,40 +49,36 @@
 
 // Top module
 module adbg_jsp_wb_biu
-#(
-  parameter ADDR_WIDTH = 32,
-  parameter DATA_WIDTH = 32
-)
 (
-// Debug interface signals
-  input                     tck_i,
-  input                     rst_i,
-  input  [             7:0] data_i,
-  output [             7:0] data_o,
-  output [             3:0] bytes_available_o,
-  output [             3:0] bytes_free_o,
-  input                     rd_strobe_i,
-                            wr_strobe_i,
+  // Debug interface signals
+  input            tck_i,
+  input            rst_i,
+  input      [7:0] data_i,
+  output     [7:0] data_o,
+  output     [3:0] bytes_available_o,
+  output     [3:0] bytes_free_o,
+  input            rd_strobe_i,
+                   wr_strobe_i,
 
   // Wishbone signals
-  input                     wb_clk_i,
-  input                     wb_rst_i,
-  input                     wb_cyc_i,
-  input                     wb_stb_i,
-  input                     wb_we_i,
-  input  [ADDR_WIDTH  -1:0] wb_adr_i,
-  input  [DATA_WIDTH/8-1:0] wb_sel_i,
-  input  [DATA_WIDTH  -1:0] wb_dat_i,
-  output [DATA_WIDTH  -1:0] wb_dat_o,
-  output                    wb_ack_o,
-  output                    wb_err_o,
-  output                    int_o
+  input            wb_clk_i,
+  input            wb_rst_i,
+  input            wb_cyc_i,
+  input            wb_stb_i,
+  input            wb_we_i,
+  input      [2:0] wb_adr_i,
+  input      [7:0] wb_dat_i,
+  output reg [7:0] wb_dat_o,
+  output           wb_ack_o,
+  output           wb_err_o,
+  output           int_o
 );
 
   //////////////////////////////////////////////////////////////////
   //
   // Constants
   //
+  import adbg_jsp_16550_pkg::*;
 
   typedef enum logic [1:0] {RD_IDLE,RD_PUSH,RD_POP,RD_LATCH} rd_states;
   typedef enum logic [1:0] {WR_IDLE,WR_PUSH,WR_POP         } wr_states;
@@ -100,15 +96,15 @@ module adbg_jsp_wb_biu
   reg        ren_tff;
  
   // Wires  
-  wire wb_fifo_ack;
+  wire       fifo_ack;
   wire [3:0] wr_bytes_free;
   wire [3:0] rd_bytes_avail;
   wire [3:0] wr_bytes_avail;  // used to generate wr_fifo_not_empty
   wire       rd_bytes_avail_not_zero;
   wire       ren_sff_out;   
   wire [7:0] rd_fifo_data_out;
-  wire [7:0] data_to_wb;
-  wire [7:0] data_from_wb;
+  wire [7:0] data_to_extbus;
+  wire [7:0] data_from_extbus;
   wire       wr_fifo_not_empty;  // this is for the WishBone interface LSR register
   wire       rx_fifo_rst;  // rcvr in the WB sense, opposite most of the rest of this file
   wire       tx_fifo_rst;  // ditto
@@ -126,8 +122,8 @@ module adbg_jsp_wb_biu
 
   // Indicators to FSMs
   wire       wdata_avail; // JTAG side has data available
-  wire       wb_rd;       // WishBone requests read
-  wire       wb_wr;       // WishBone requests write
+  wire       fifo_rd;     // ext.bus requests read
+  wire       fifo_wr;     // ext.bus requests write
   wire       pop;         // JTAG side received a byte, pop and get next
   wire       rcz;         // zero bytes available in read FIFO
   
@@ -172,7 +168,7 @@ module adbg_jsp_wb_biu
   assign rd_bytes_avail_not_zero = |rd_bytes_avail;
   assign pop                     =  ren_sff_out & rd_bytes_avail_not_zero;
   assign rcz                     = ~rd_bytes_avail_not_zero;
-  assign wb_fifo_ack             =  r_wb_ack | w_wb_ack;
+  assign fifo_ack                =  r_wb_ack | w_wb_ack;
   assign wr_fifo_not_empty       = |wr_bytes_avail;
        
   // rdata register
@@ -225,7 +221,7 @@ module adbg_jsp_wb_biu
     .RST         ( rst_i | rx_fifo_rst ), // rst_i from JTAG clk domain, rx_fifo_rst from WB, RST is async reset
     .CLK         ( wb_clk_i            ),
     .DATA_IN     ( data_in             ),
-    .DATA_OUT    ( data_to_wb          ),
+    .DATA_OUT    ( data_to_extbus      ),
     .PUSH_POPn   ( wpp                 ),
     .EN          ( w_fifo_en           ),
     .BYTES_AVAIL ( wr_bytes_avail      ),
@@ -234,9 +230,9 @@ module adbg_jsp_wb_biu
    
   // read FIFO
   bytefifo rd_fifo (
-    .RST         ( rst_i | txt_fifo_rst), // rst_i from JTAG clk domain, tx_fifo_rst from WB, RST is async reset
+    .RST         ( rst_i | tx_fifo_rst ), // rst_i from JTAG clk domain, tx_fifo_rst from WB, RST is async reset
     .CLK         ( wb_clk_i            ),
-    .DATA_IN     ( data_from_wb        ),
+    .DATA_IN     ( data_from_extbus    ),
     .DATA_OUT    ( rd_fifo_data_out    ),
     .PUSH_POPn   ( rpp                 ),
     .EN          ( r_fifo_en           ),
@@ -258,23 +254,23 @@ module adbg_jsp_wb_biu
   always_comb
     case (rd_fsm_state)
       RD_IDLE:
-        if      (wb_wr) next_rd_fsm_state = RD_PUSH;
-        else if (pop  ) next_rd_fsm_state = RD_POP;
-        else            next_rd_fsm_state = RD_IDLE;
+        if      (fifo_wr) next_rd_fsm_state = RD_PUSH;
+        else if (pop    ) next_rd_fsm_state = RD_POP;
+        else              next_rd_fsm_state = RD_IDLE;
 
       RD_PUSH:
-        if      (rcz  ) next_rd_fsm_state = RD_LATCH;  // putting first item in fifo, move to rdata in state LATCH
-        else if (pop  ) next_rd_fsm_state = RD_POP;
-        else            next_rd_fsm_state = RD_IDLE;
+        if      (rcz    ) next_rd_fsm_state = RD_LATCH;  // putting first item in fifo, move to rdata in state LATCH
+        else if (pop    ) next_rd_fsm_state = RD_POP;
+        else              next_rd_fsm_state = RD_IDLE;
 
-      RD_POP:           next_rd_fsm_state = RD_LATCH; // new data at FIFO head, move to rdata in state LATCH
+      RD_POP:             next_rd_fsm_state = RD_LATCH; // new data at FIFO head, move to rdata in state LATCH
 
       RD_LATCH:
-        if      (wb_wr) next_rd_fsm_state = RD_PUSH;
-        else if (pop  ) next_rd_fsm_state = RD_POP;
-        else            next_rd_fsm_state = RD_IDLE;
+        if      (fifo_wr) next_rd_fsm_state = RD_PUSH;
+        else if (pop    ) next_rd_fsm_state = RD_POP;
+        else              next_rd_fsm_state = RD_IDLE;
 
-      default:          next_rd_fsm_state = RD_IDLE;
+      default:            next_rd_fsm_state = RD_IDLE;
     endcase
 
 
@@ -321,12 +317,12 @@ module adbg_jsp_wb_biu
   always_comb
     case (wr_fsm_state)
       WR_IDLE:
-        if      (wb_rd      ) next_wr_fsm_state = WR_POP;
+        if      (fifo_rd    ) next_wr_fsm_state = WR_POP;
         else if (wdata_avail) next_wr_fsm_state = WR_PUSH;
         else                  next_wr_fsm_state = WR_IDLE;
 
       WR_PUSH:
-        if      (wb_rd      ) next_wr_fsm_state = WR_POP;
+        if      (fifo_rd    ) next_wr_fsm_state = WR_POP;
         else                  next_wr_fsm_state = WR_IDLE;
 
       WR_POP:
@@ -366,99 +362,106 @@ module adbg_jsp_wb_biu
 
 
   ////////////////////////////////////////////////////////////
-  // WishBone interface hardware
+  // Interface hardware & 16550 registers
   // Interface signals to read and write fifos:
-  // wb_rd:  read strobe
-  // wb_wr:  write strobe
-  // wb_fifo_ack: fifo has completed operation
+  // fifo_rd : read strobe
+  // fifo_wr : write strobe
+  // fifo_ack: fifo has completed operation
 
-  wire [DATA_WIDTH-1:0] bus_data_lo,
-                        bus_data_hi;
-  wire                  wb_reg_ack;
-  wire                  rd_fifo_not_full;  // "rd fifo" is the one the WB writes to
-  reg  [           2:0] iir_gen;           // actually combinatorial
-  wire                  rd_fifo_becoming_empty;
+  //16550 registers
+  ier_struct ier;
+  iir_struct iir;
+//  fcr_struct fcr;
+  lcr_struct lcr;
+  mcr_struct mcr;
+  lsr_struct lsr;
+  msr_struct msr;
+  scr_struct scr;
+
+
+  wire reg_ack;
+  wire rd_fifo_not_full;  // "rd fifo" is the one the WB writes to
+  wire rd_fifo_becoming_empty;
+  reg  thr_int_arm;       // used so that an IIR read can clear a transmit interrupt
+  wire iir_read;
    
-  // These 16550 registers are at least partly implemented
-  reg                   reg_dlab_bit;      // part of the LCR
-  reg  [           3:0] reg_ier;
-  wire [           2:0] reg_iir;
-  reg                   thr_int_arm;       // used so that an IIR read can clear a transmit interrupt
-  wire [           7:0] reg_lsr;
-  wire                  reg_dlab_bit_wren;
-  wire                  reg_ier_wren;
-  wire                  reg_iir_rden;
-  wire [           7:0] reg_lcr;           // the DLAB bit above is the 8th bit
-  wire                  reg_fcr_wren;      // FCR is WR-only, at the same address as the IIR (contains SW reset bits)
-   
+
   // These 16550 registers are not implemented
-  wire [           7:0] reg_mcr = 'h00;  // These bits control modem control lines, unused here
-  wire [           7:0] reg_msr = 'hb0;  // CD, DSR, CTS true, RI false, indicate no changes
-  wire [           7:0] reg_scr = 'h00;  // scratch register
-
-
-  // Create handshake signals to/from the FIFOs
-  assign wb_rd    = wb_cyc_i & wb_stb_i & ~wb_we_i & wb_sel_i[3] & (wb_adr_i[1:0] == 2'b00) & ~reg_dlab_bit;
-  assign wb_wr    = wb_cyc_i & wb_stb_i &  wb_we_i & wb_sel_i[3] & (wb_adr_i[1:0] == 2'b00) & ~reg_dlab_bit;
-  assign wb_ack_o = wb_fifo_ack | wb_reg_ack;
-  assign wb_err_o = 1'b0;
-
+  assign mcr = 'h0;
+  assign msr = 'hb;
 
   // Create the simple / combinatorial registers
   assign rd_fifo_not_full = !(rd_bytes_avail == 4'h8);
-  assign reg_lcr          = {reg_dlab_bit, 7'h03};  // Always set for 8n1
-  assign reg_lsr          = {1'b0, rd_fifo_not_full, rd_fifo_not_full, 4'h0, wr_fifo_not_empty};   
+  assign lsr              = {1'b0, rd_fifo_not_full, rd_fifo_not_full, 4'h0, wr_fifo_not_empty};   
 
-
-  // Create enable bits for the 16550 registers that we actually implement
-  assign reg_dlab_bit_wren = wb_cyc_i & wb_stb_i &  wb_we_i & wb_sel_i[0] & (wb_adr_i[2:0] == 3'b011);
-  assign reg_ier_wren      = wb_cyc_i & wb_stb_i &  wb_we_i & wb_sel_i[2] & (wb_adr_i[2:0] == 3'b001) & ~reg_dlab_bit;
-  assign reg_iir_rden      = wb_cyc_i & wb_stb_i & ~wb_we_i & wb_sel_i[1] & (wb_adr_i[2:0] == 3'b010);
-  assign wb_reg_ack        = wb_cyc_i & wb_stb_i &           |wb_sel_i    & (reg_dlab_bit | (wb_adr_i[2:0] != 3'b000));
-  assign reg_fcr_wren      = wb_cyc_i & wb_stb_i &  wb_we_i & wb_sel_i[1] & (wb_adr_i[2:0] == 3'b010);
-  assign rx_fifo_rst       = reg_fcr_wren & wb_dat_i[9];
-  assign tx_fifo_rst       = reg_fcr_wren & wb_dat_i[10];
-   
-  // Create DLAB bit
+  // Create writeable registers
   always @(posedge wb_clk_i)
-    if      (wb_rst_i         ) reg_dlab_bit <= 1'b0;
-    else if (reg_dlab_bit_wren) reg_dlab_bit <= wb_dat_i[7];
+    if (wb_rst_i)
+    begin
+        ier <= 'h0;
+        lcr <= 'h0;
+        scr <= 'h0;
+    end
+    else if (wb_cyc_i & wb_stb_i & wb_we_i)
+      case (wb_adr_i)
+         3'b001: if (!lcr.dlab) ier <= wb_dat_i[3:0];
+         3'b011:                lcr <= wb_dat_i;
+         3'b111:                scr <= wb_dat_i;
+      endcase
+
+    
+  // Create handshake signals to/from the FIFOs
+  assign fifo_rd  = wb_cyc_i & wb_stb_i & ~wb_we_i & (wb_adr_i == 3'b000) & ~lcr.dlab;
+  assign fifo_wr  = wb_cyc_i & wb_stb_i &  wb_we_i & (wb_adr_i == 3'b000) & ~lcr.dlab;
+
+  // Wishbone responses
+  assign wb_ack_o = fifo_ack | reg_ack;
+  assign wb_err_o = 1'b0;
+
+  // acknowledge all accesses, except to FIFOs
+  assign reg_ack = wb_cyc_i & wb_stb_i & (lcr.dlab | wb_adr_i != 3'b000);
 
 
-  // Create IER.  We only use the two LS bits...
-  always @(posedge wb_clk_i)
-    if      (wb_rst_i    ) reg_ier <= 4'h0;
-    else if (reg_ier_wren) reg_ier <= wb_dat_i[19:16];
+  // Create FIFO reset signals
+  assign rx_fifo_rst = wb_cyc_i & wb_stb_i & wb_we_i & (wb_adr_i == 3'b010) & wb_dat_i[1];
+  assign tx_fifo_rst = wb_cyc_i & wb_stb_i & wb_we_i & (wb_adr_i == 3'b010) & wb_dat_i[2];
 
 
   // Create IIR (and THR INT arm bit)
-  assign rd_fifo_becoming_empty = r_fifo_en & (~rpp) & (rd_bytes_avail == 4'h1);  // "rd fifo" is the WB write FIFO...
+  assign rd_fifo_becoming_empty = r_fifo_en & (~rpp) & (rd_bytes_avail == 4'h1);  // "rd fifo" is the ext.bus write FIFO...
+
+  assign iir_read = wb_cyc_i & wb_stb_i & ~wb_we_i & (wb_adr_i == 3'b010);
 
    
   always @(posedge wb_clk_i)
-    if      (wb_rst_i                          ) thr_int_arm <= 1'b0;
-    else if (wb_wr || rd_fifo_becoming_empty   ) thr_int_arm <= 1'b1;  // Set when WB write fifo becomes empty, or on a write to it
-    else if (reg_iir_rden && !wr_fifo_not_empty) thr_int_arm <= 1'b0;
+    if      (wb_rst_i                           ) thr_int_arm <= 1'b0;
+    else if (fifo_wr  ||  rd_fifo_becoming_empty) thr_int_arm <= 1'b1;  // Set when WB write fifo becomes empty, or on a write to it
+    else if (iir_read && !wr_fifo_not_empty     ) thr_int_arm <= 1'b0;
 
 
-  always @(thr_int_arm or rd_fifo_not_full or wr_fifo_not_empty)
-    if      (wr_fifo_not_empty              ) iir_gen <= 3'b100;
-    else if (thr_int_arm && rd_fifo_not_full) iir_gen <= 3'b010;
-    else                                      iir_gen <= 3'b001;
+  always_comb
+    if      (wr_fifo_not_empty              ) iir = 'b100;
+    else if (thr_int_arm && rd_fifo_not_full) iir = 'b010;
+    else                                      iir = 'b001;
    
-   assign reg_iir = iir_gen;
    
+  // Create ext.bus Data Out
+  always_comb
+    case (wb_adr_i)
+      3'b000 : wb_dat_o = data_to_extbus;
+      3'b001 : wb_dat_o = {4'h0, ier};
+      3'b010 : wb_dat_o = iir;
+      3'b011 : wb_dat_o = lcr;
+      3'b100 : wb_dat_o = mcr;
+      3'b101 : wb_dat_o = lsr;
+      3'b110 : wb_dat_o = msr;
+      3'b111 : wb_dat_o = scr;
+      default: wb_dat_o = 'h0;
+    endcase
 
-   // Create the data lines out to the WB.
-   // Always put all 4 bytes on the WB data lines, let the master pick out what it wants.   
-   assign bus_data_lo  = {data_to_wb, {4'h0, reg_ier}, {5'h0, reg_iir}, reg_lcr};
-   assign bus_data_hi  = {reg_mcr, reg_lsr, reg_msr, reg_scr};
-   assign wb_dat_o     = (wb_adr_i[2]) ? bus_data_hi : bus_data_lo;
-
-   assign data_from_wb = wb_dat_i[31:24];  // Data to the FIFO
-
+   assign data_from_extbus = wb_dat_i;  // Data to the FIFO
 
    // Generate interrupt output
-   assign int_o = (rd_fifo_not_full & thr_int_arm & reg_ier[1]) | (wr_fifo_not_empty & reg_ier[0]);
+   assign int_o = (rd_fifo_not_full & thr_int_arm & ier.etbei) | (wr_fifo_not_empty & ier.erbfi);
 endmodule
 
