@@ -1,6 +1,6 @@
 //////////////////////////////////////////////////////////////////////
 ////                                                              ////
-////  adbg_jsp_biu.v                                              ////
+////  adbg_jsp_wb_biu.v                                           ////
 ////                                                              ////
 ////                                                              ////
 ////  This file is part of the SoC Debug Interface.               ////
@@ -173,7 +173,7 @@ module adbg_jsp_wb_biu
        
   // rdata register
   always @(posedge wb_clk_i,posedge rst_i)
-    if      (rst_i   ) rdata = 8'h0;
+    if      (rst_i   ) rdata <= 8'h0;
     else if (rdata_en) rdata <= rd_fifo_data_out;
         
   // WEN SFF

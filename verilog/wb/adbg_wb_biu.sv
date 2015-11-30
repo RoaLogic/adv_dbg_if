@@ -47,13 +47,11 @@
 // - synchronized WB-reset
 //
 
-`include "adbg_wb_defines.v"
-
 // Top module
 module adbg_wb_biu #(
-  parameter LITTLE_ENDIAN = 0,
-  parameter ADDR_WIDTH = 32,
-  parameter DATA_WIDTH = 32
+  parameter LITTLE_ENDIAN = 1,
+  parameter ADDR_WIDTH    = 32,
+  parameter DATA_WIDTH    = 32
 )
 (
   // Debug interface signals
@@ -110,9 +108,7 @@ module adbg_wb_biu #(
 
 
    // Control Signals
-   logic data_o_en;    // latch wb_data_i
-   logic rdy_sync_en;  // toggle the rdy_sync signal, indicate ready to TCK domain
-   logic err_en;       // latch the wb_err_i signal
+   logic wb_resp;      // WB response received (either ACK or ERR)
 
    // Internal signals
    logic [           3:0] be_dec;        // word_size and low-order address bits decoded to SEL bits
@@ -233,7 +229,7 @@ module adbg_wb_biu #(
   //
 
   // synchronize asynchronous active high reset
-  always @(posedge wb_clk_i)
+  always @(posedge wb_clk_i,posedge biu_rst)
     if (biu_rst) wb_rst_sync <= {$bits(wb_rst_sync){1'b1}};
     else         wb_rst_sync <= {1'b0,wb_rst_sync[$bits(wb_rst_sync)-1:1]};
 
@@ -244,8 +240,8 @@ module adbg_wb_biu #(
   always @ (posedge wb_clk_i,posedge wb_rst)
     if(wb_rst)
     begin
-        str_sync_wbff1 <= 1'b0;
-        str_sync_wbff2 <= 1'b0;
+        str_sync_wbff1  <= 1'b0;
+        str_sync_wbff2  <= 1'b0;
         str_sync_wbff2q <= 1'b0;      
    end
    else
@@ -259,9 +255,9 @@ module adbg_wb_biu #(
 
 
   // Error indicator register
-  always @ (posedge wb_clk_i,posedge wb_rst)
-    if      (wb_rst) err_reg <= 1'b0;
-    else if (err_en) err_reg <= wb_err_i; 
+  always @(posedge wb_clk_i,posedge wb_rst)
+    if      (wb_rst ) err_reg <= 1'b0;
+    else if (wb_resp) err_reg <= wb_err_i; 
 
 
   // Byte- or word-swap the WB->dbg data, as necessary (combinatorial)
@@ -282,14 +278,14 @@ module adbg_wb_biu #(
 
   // WB->dbg data register
   always @(posedge wb_clk_i,posedge wb_rst)
-    if      (wb_rst   ) data_out_reg <= 32'h0;
-    else if (data_o_en) data_out_reg <= swapped_data_out;
+    if      (wb_rst ) data_out_reg <= 'h0;
+    else if (wb_resp) data_out_reg <= swapped_data_out;
 
 
   // Create a toggle-active ready signal to send to the TCK domain
   always @(posedge wb_clk_i,posedge wb_rst)
-    if      (wb_rst     ) rdy_sync <= 1'b0;
-    else if (rdy_sync_en) rdy_sync <= ~rdy_sync;
+    if      (wb_rst ) rdy_sync <= 1'b0;
+    else if (wb_resp) rdy_sync <= ~rdy_sync;
 
 
   /////////////////////////////////////////////////////
@@ -297,63 +293,31 @@ module adbg_wb_biu #(
   // Not much more that an 'in_progress' bit, but easier to read
   // Handles single-cycle and multi-cycle accesses.
 
-  // Sequential bit
-  always @ (posedge wb_clk_i,posedge biu_rst)
-    if (biu_rst) wb_fsm_state <= IDLE;
+  assign wb_resp = wb_ack_i | wb_err_i;
+
+
+  always @(posedge wb_clk_i,posedge wb_rst)
+    if (wb_rst)
+    begin
+        wb_cyc_o <= 'b0;
+        wb_stb_o <= 'b0;
+        wb_fsm_state <= IDLE;
+    end
     else
       case (wb_fsm_state)
-        IDLE    : begin
-                      if (start_toggle && !(wb_ack_i || wb_err_i)) wb_fsm_state <= TRANSFER;
-                  end
-        TRANSFER: begin
-                      if (wb_ack_i || wb_err_i) wb_fsm_state <= IDLE;
-                  end
+         IDLE    : if (start_toggle)
+                   begin
+                       wb_cyc_o     <= 1'b1;
+                       wb_stb_o     <= 1'b1;
+                       wb_fsm_state <= TRANSFER;
+                   end
+
+         TRANSFER: if (wb_resp)
+                   begin
+                       wb_cyc_o     <= 1'b0;
+                       wb_stb_o     <= 1'b0;
+                       wb_fsm_state <= IDLE;
+                   end
       endcase
-
-
-  // Outputs of state machine (combinatorial)
-  // rih: ugly, at least wb_cyc_o and wb_stb_o should be registered
-  always_comb
-    begin
-        rdy_sync_en = 1'b0;
-        err_en      = 1'b0;
-        data_o_en   = 1'b0;
-        wb_cyc_o    = 1'b0;
-        wb_stb_o    = 1'b0;
-
-       case (wb_fsm_state)
-          IDLE: if(start_toggle)
-                begin
-                     wb_cyc_o = 1'b1;
-                     wb_stb_o = 1'b1;
-
-                     if(wb_ack_i || wb_err_i)
-                     begin
-                         err_en      = 1'b1;
-                         rdy_sync_en = 1'b1;
-                     end
-  
-                     data_o_en = wb_ack_i & ~wr_reg;
-                end
-
-          TRANSFER: begin
-                        wb_cyc_o = 1'b1;
-                        wb_stb_o = 1'b1;
-
-                        if(wb_ack_i)
-                        begin
-                            err_en      = 1'b1;
-                            data_o_en   = 1'b1;
-                            rdy_sync_en = 1'b1;
-                        end
-                        else if (wb_err_i)
-                        begin
-                           err_en      = 1'b1;
-                          rdy_sync_en = 1'b1;
-                        end
-                    end
-       endcase
-    end
-
 endmodule
 

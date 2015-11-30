@@ -1,14 +1,13 @@
 //////////////////////////////////////////////////////////////////////
 ////                                                              ////
-////  adbg_top.v                                                  ////
+////  adbg_top_wb.v                                               ////
 ////                                                              ////
 ////                                                              ////
 ////  This file is part of the SoC Advanced Debug Interface.      ////
 ////                                                              ////
 ////  Author(s):                                                  ////
 ////       Nathan Yawn (nathan.yawn@opencores.org)                ////
-////                                                              ////
-////                                                              ////
+////       Richard Herveille (richard.herveille@roalogic.com)     ////
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
 ////                                                              ////
@@ -80,6 +79,8 @@ module adbg_top_wb #(
   input                     wb_err_i,
 
   // WISHBONE Target Interface Signals (JTAG Serial Port)
+  input                     wb_jsp_clk_i,
+                            wb_jsp_rst_i,
   input                     wb_jsp_cyc_i,
   input                     wb_jsp_stb_i,
   input                     wb_jsp_we_i,
@@ -88,7 +89,7 @@ module adbg_top_wb #(
   input  [             7:0] wb_jsp_dat_i,
   output                    wb_jsp_ack_o,
   output                    wb_jsp_err_o,
-  output                    int_o,
+  output                       jsp_int_o,
 
   //CPU/Thread debug ports
   input                                     cpu_clk_i,
@@ -249,22 +250,19 @@ adbg_jsp_wb_module i_dbg_jsp (
   .module_select_i  ( module_selects [DBG_TOP_JSP_DEBUG_MODULE]),
   .top_inhibit_o    ( module_inhibit [DBG_TOP_JSP_DEBUG_MODULE]),
 
-  // WISHBONE common signals
-  .wb_clk_i         ( wb_clk_i     ),
-  .wb_rst_i         ( wb_rst_i     ),
-                  
-  // WISHBONE slave interface
-  .wb_adr_i         ( wb_jsp_adr_i ), 
-  .wb_dat_o         ( wb_jsp_dat_o ),
-  .wb_dat_i         ( wb_jsp_dat_i ),
+  // WISHBONE connections
+  .wb_clk_i         ( wb_jsp_clk_i ),
+  .wb_rst_i         ( wb_jsp_rst_i ),
   .wb_cyc_i         ( wb_jsp_cyc_i ),
   .wb_stb_i         ( wb_jsp_stb_i ),
   .wb_we_i          ( wb_jsp_we_i  ),
+  .wb_adr_i         ( wb_jsp_adr_i ),
+  .wb_dat_i         ( wb_jsp_dat_i ),
+  .wb_dat_o         ( wb_jsp_dat_o ),
   .wb_ack_o         ( wb_jsp_ack_o ),
   .wb_err_o         ( wb_jsp_err_o ),
- .int_o             ( int_o        )
+  .int_o            (    jsp_int_o )
 );
-   
  
 
   assign module_inhibit[DBG_TOP_RESERVED_DBG_MODULE] = 1'b0;
