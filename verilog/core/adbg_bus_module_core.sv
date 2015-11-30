@@ -182,15 +182,15 @@ module adbg_bus_module_core #(
    wire                      bit_count_32;       // true when bit count register == 32, for CRC after burst writes
 
    // Intermediate signals
-   logic [               5:0] word_size_bits;          // 8,16,32,64.  Decoded from 'operation'
-   logic [               3:0] word_size_bytes;         // 1,2,4,8
+   logic [               5:0] word_size_bits;        // 8,16,32,64.  Decoded from 'operation'
+   logic [               3:0] word_size_bytes;       // 1,2,4,8
    logic [              15:0] decremented_word_count;
    logic [ADDR_WIDTH    -1:0] address_data_in;       // from data_register_i
    logic [              15:0] count_data_in;         // from data_register_i
    logic [               3:0] operation_in;          // from data_register_i
    logic [DATA_WIDTH    -1:0] data_to_biu;           // from data_register_i
    logic [              31:0] crc_data_out;          // output of CRC module, to output shift register
-   logic                      crc_data_in;                  // input to CRC module, either data_register[52] or data_out_shift_reg[0]
+   logic                      crc_data_in;           // input to CRC module, either data_register[52] or data_out_shift_reg[0]
    logic                      crc_serial_out;
    logic [REGSELECT_SIZE-1:0] reg_select_data; // from data_register_i, input to internal register select register
    logic [DATA_WIDTH      :0] data_from_internal_reg;  // data from internal reg. MUX to output shift register
