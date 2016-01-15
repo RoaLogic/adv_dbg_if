@@ -63,31 +63,10 @@ module adbg_top_ahb3 #(
 
 
   // AHB Master Interface Signals
-  input                     HRESETn,
-  input                     HCLK,
-  output [             1:0] HTRANS,
-  output [             3:0] HBURST,
-  output                    HWRITE,
-  output [ADDR_WIDTH  -1:0] HADDR,
-  output [             2:0] HSIZE,,
-  output [DATA_WIDTH  -1:0] HWDATA,
-  input  [DATA_WIDTH  -1:0] HRDATA,
-  input                     HREADY,
-  input                     HRESP,
+  ahb3lite_bus.master       dbg_if,
 
   // APB Slave Interface Signals (JTAG Serial Port)
-  input                     PRESETn,
-                            PCLK,
-                            PSEL,
-  input                     PPROT,
-  input  [             2:0] PADDR,
-  input                     PWRITE,
-  input                     PENABLE,
-  input  [             7:0] PWDATA,
-  output                    PSTRB,
-  output [             7:0] PRDATA,
-  output                    PREADY,
-  output                    PSLVERR,
+  apb_bus.slave             jsp_if,
   output                    int_o,
 
   //CPU/Thread debug ports

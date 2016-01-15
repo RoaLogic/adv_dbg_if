@@ -13,37 +13,34 @@
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
 ////                                                              ////
-//// Copyright (C) 2015 Authors                                   ////
+//// Copyright (C) 2015-2016 Authors                              ////
 ////                                                              ////
 //// This source file may be used and distributed without         ////
 //// restriction provided that this copyright statement is not    ////
 //// removed from the file and that any derivative work contains  ////
 //// the original copyright notice and the associated disclaimer. ////
-////                                                              ////
-//// This source file is free software; you can redistribute it   ////
-//// and/or modify it under the terms of the GNU Lesser General   ////
-//// Public License as published by the Free Software Foundation; ////
-//// either version 2.1 of the License, or (at your option) any   ////
-//// later version.                                               ////
-////                                                              ////
-//// This source is distributed in the hope that it will be       ////
-//// useful, but WITHOUT ANY WARRANTY; without even the implied   ////
-//// warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR      ////
-//// PURPOSE.  See the GNU Lesser General Public License for more ////
-//// details.                                                     ////
-////                                                              ////
-//// You should have received a copy of the GNU Lesser General    ////
-//// Public License along with this source; if not, download it   ////
-//// from http://www.opencores.org/lgpl.shtml                     ////
+////                                                              ////  
+////      THIS SOFTWARE IS PROVIDED ``AS IS'' AND WITHOUT ANY     ////
+////  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED   ////
+////  TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS   ////
+////  FOR A PARTICULAR PURPOSE. IN NO EVENT SHALL THE AUTHOR      ////
+////  OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,         ////
+////  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES    ////
+////  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE   ////
+////  GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR        ////
+////  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF  ////
+////  LIABILITY, WHETHER IN  CONTRACT, STRICT LIABILITY, OR TORT  ////
+////  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT  ////
+////  OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE         ////
+////  POSSIBILITY OF SUCH DAMAGE.                                 ////
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
-
 
 /*
  * Constants used 
  */
 package adbg_ahb3_pkg;
-  // The Wishbone debug module requires 53 bits
+  // The AHB3 debug module requires 53 bits
   parameter DBG_AHB_DATAREG_LEN = 53;
 
   // These relate to the number of internal registers, and how
@@ -52,11 +49,11 @@ package adbg_ahb3_pkg;
   parameter DBG_AHB_NUM_INTREG     = 1;
 
   // Register index definitions for module-internal registers
-  // The WB module has just 1, the error register
+  // The AHB module has just 1, the error register
   parameter DBG_AHB_INTREG_ERROR = 'b0;
 
 
-  // Valid commands/opcodes for the wishbone debug module
+  // Valid commands/opcodes for the AHB debug module (same as Wishbone)
   // 0000  NOP
   // 0001  Write burst, 8-bit access
   // 0010  Write burst, 16-bit access
@@ -116,4 +113,116 @@ package adbg_ahb3_pkg;
   parameter       HRESP_OKAY    = 1'b0,
                   HRESP_ERR     = 1'b1;
 endpackage
+
+/*
+ * AHB3 Lite Interface
+ */
+interface ahb3lite_bus #(
+    parameter HADDR_SIZE = 32,
+    parameter HDATA_SIZE = 32
+  )
+  (
+    input logic HCLK,HRESETn
+  );
+    logic                   HSEL;
+    logic [HADDR_SIZE -1:0] HADDR;
+    logic [HDATA_SIZE -1:0] HWDATA;
+    logic [HDATA_SIZE -1:0] HRDATA;
+    logic                   HWRITE;
+    logic [            2:0] HSIZE;
+    logic [            2:0] HBURST;
+    logic [            3:0] HPROT;
+    logic [            1:0] HTRANS;
+    logic                   HMASTLOCK;
+    logic                   HREADY;
+    logic                   HREADYOUT;
+    logic                   HRESP;
+
+    modport master (
+      input  HRESETn,
+      input  HCLK,
+      output HSEL,
+      output HADDR,
+      output HWDATA,
+      input  HRDATA,
+      output HWRITE,
+      output HSIZE,
+      output HBURST,
+      output HPROT,
+      output HTRANS,
+      output HMASTLOCK,
+      input  HREADY,
+      input  HRESP
+    );
+
+    modport slave (
+      input  HRESETn,
+      input  HCLK,
+      input  HSEL,
+      input  HADDR,
+      input  HWDATA,
+      output HRDATA,
+      input  HWRITE,
+      input  HSIZE,
+      input  HBURST,
+      input  HPROT,
+      input  HTRANS,
+      input  HMASTLOCK,
+      input  HREADY,
+      output HREADYOUT,
+      output HRESP
+    );
+endinterface
+
+/*
+ * AHB3 Lite Interface
+ */
+interface apb_bus #(
+    parameter PADDR_SIZE = 6,
+    parameter PDATA_SIZE = 8
+  )
+  (
+    input logic PCLK,PRESETn
+  );
+    logic                    PSEL;
+    logic                    PENABLE;
+    logic [             2:0] PPROT;
+    logic                    PWRITE;
+    logic [PDATA_SIZE/8-1:0] PSTRB;
+    logic [PADDR_SIZE  -1:0] PADDR;
+    logic [PDATA_SIZE  -1:0] PWDATA;
+    logic [PDATA_SIZE  -1:0] PRDATA;
+    logic                    PREADY;
+    logic                    PSLVERR;
+
+    modport master (
+      input  PRESETn,
+      input  PCLK,
+      output PSEL,
+      output PENABLE,
+      output PPROT,
+      output PADDR,
+      output PWRITE,
+      output PSTRB,
+      output PWDATA,
+      input  PRDATA,
+      input  PREADY,
+      input  PSLVERR
+    );
+
+    modport slave (
+      input  PRESETn,
+      input  PCLK,
+      input  PSEL,
+      input  PENABLE,
+      input  PPROT,
+      input  PADDR,
+      input  PWRITE,
+      input  PSTRB,
+      input  PWDATA,
+      output PRDATA,
+      output PREADY,
+      output PSLVERR
+    );
+endinterface
 

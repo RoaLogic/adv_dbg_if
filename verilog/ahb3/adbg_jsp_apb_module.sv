@@ -57,19 +57,7 @@ module adbg_jsp_apb_module
   output                                        top_inhibit_o,
 
   // AMBA APB interface
-  input                                         PRESETn,
-                                                PCLK,
-                                                PSEL,
-  input                                         PPROT,
-  input  [                                 2:0] PADDR,
-  input                                         PWRITE,
-  input                                         PENABLE,
-  input  [                                 7:0] PWDATA,
-  output                                        PSTRB,
-  output [                                 7:0] PRDATA,
-  output                                        PREADY,
-  output                                        PSLVERR,
-
+  apb_bus.slave                                 jsp_if,
   output                                        int_o
 );
   
@@ -109,7 +97,7 @@ module adbg_jsp_apb_module
   );
 
   /*
-   * Hookup JSP Wishbone Interface
+   * Hookup JSP APB Interface
    */
   adbg_jsp_apb_biu
   jsp_biu_inst (

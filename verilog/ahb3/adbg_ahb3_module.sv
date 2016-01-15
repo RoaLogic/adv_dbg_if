@@ -65,17 +65,7 @@ module adbg_ahb3_module #(
   output                    top_inhibit_o,
 
   // AHB3 master interface
-  input                     HRESETn,
-  input                     HCLK,
-  output [             1:0] HTRANS,
-  output [             3:0] HBURST,
-  output                    HWRITE,
-  output [ADDR_WIDTH  -1:0] HADDR,
-  output [             2:0] HSIZE,,
-  output [DATA_WIDTH  -1:0] HWDATA,
-  input  [DATA_WIDTH  -1:0] HRDATA,
-  input                     HREADY,
-  input                     HRESP
+  ahb3lite_bus.master       dbg_if
 );
   //////////////////////////////////////////////////////////////////
   //
@@ -141,7 +131,7 @@ module adbg_ahb3_module #(
 
 
   /*
-   * Hookup Bus Wishbone Interface
+   * Hookup AHB Bus Interface
    */
   adbg_ahb3_biu #(
     .ADDR_WIDTH ( ADDR_WIDTH ),
