@@ -131,7 +131,7 @@ module adbg_bus_module_core #(
   typedef enum logic [3:0] {STATE_idle,STATE_Rbegin,STATE_Rready,STATE_Rstatus,STATE_Rburst,
                             STATE_Wready,STATE_Wwait,STATE_Wburst,STATE_Wstatus,STATE_Rcrc,STATE_Wcrc,STATE_Wmatch} states;
 
-  parameter INTREG_ERROR = 1'b0;
+  localparam INTREG_ERROR = 1'b0;
 
   //////////////////////////////////////////////////////////////////
   //

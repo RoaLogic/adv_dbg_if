@@ -447,6 +447,7 @@ module adbg_or1k_module #(
       STATE_Wburst:
            if      (update_dr_i                     ) module_next_state = STATE_idle;  // client terminated early
            else if (bit_count_max && word_count_zero) module_next_state = STATE_Wcrc;
+			  else                                       module_next_state = STATE_Wburst;
       STATE_Wstatus:
            if      (update_dr_i    ) module_next_state = STATE_idle;  // client terminated early
            else if (word_count_zero) module_next_state = STATE_Wcrc;

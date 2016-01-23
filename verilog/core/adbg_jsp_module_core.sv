@@ -229,6 +229,8 @@ module adbg_jsp_module_core
   // It is assumed that the BIU has internal registers, and will
   // latch write data (and ack read data) on rising clock edge 
   // when strobe is asserted
+  assign biu_clk       = tck_i;
+  assign biu_rst       = rst_i;
   assign biu_di        = data_to_biu;
   assign data_from_biu = biu_do;
 

@@ -74,8 +74,7 @@ assign new_crc[29] = crc[30] ^ data ^ crc[0];
 assign new_crc[30] = crc[31] ^ data ^ crc[0];
 assign new_crc[31] =           data ^ crc[0];
 
-always @ (posedge clk or posedge rstn)
-begin
+always @ (posedge clk or negedge rstn)
   if(!rstn)
     crc[31:0] <= 32'hffffffff;
   else if(clr)
@@ -84,7 +83,6 @@ begin
     crc[31:0] <= new_crc;
   else if (shift)
     crc[31:0] <= {1'b0, crc[31:1]};
-end
 
 
 //assign crc_match = (crc == 32'h0);
