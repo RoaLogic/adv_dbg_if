@@ -62,20 +62,20 @@ module adbg_ahb3_biu #(
 
 
   // AHB Master signals
-  ahb3lite_bus.master         dbg_if
-/*
-  input                       HRESETn,
-  input                       HCLK,
-  output reg [           1:0] HTRANS,
-  output     [           3:0] HBURST,
-  output reg                     HWRITE,
-  output reg [ADDR_WIDTH-1:0] HADDR,
-  output reg [           2:0] HSIZE,,
-  output reg [DATA_WIDTH-1:0] HWDATA,
-  input      [DATA_WIDTH-1:0] HRDATA,
-  input                       HREADY,
-  input                       HRESP
-*/
+  input                     HCLK,
+                            HRESETn,
+  output                    HSEL,
+  output [ADDR_WIDTH  -1:0] HADDR,
+  output [DATA_WIDTH  -1:0] HWDATA,
+  input  [DATA_WIDTH  -1:0] HRDATA,
+  output                    HWRITE,
+  output [             2:0] HSIZE,
+  output [             3:0] HBURST,
+  output [             3:0] HPROT,
+  output [             1:0] HTRANS,
+  output                    HMASTLOCK,
+  input                     HREADY,
+  input                     HRESP
 );
   //////////////////////////////////////////////////////////////////
   //
@@ -123,37 +123,37 @@ module adbg_ahb3_biu #(
   //
   // There is no FSM here, just signal latching and clock domain synchronization
 
-  // Create byte enable signals from word_size and address (combinatorial)
-  always @(posedge dbg_if.HCLK)
+  // Create byte enable signals from word_size and address
+  always @(posedge biu_clk)
     if (biu_strb && biu_rdy)
       case (biu_word_size)
-         'h1    : dbg_if.HSIZE <= HSIZE_BYTE;
-         'h2    : dbg_if.HSIZE <= HSIZE_HWORD;
-         'h4    : dbg_if.HSIZE <= HSIZE_WORD;
-         default: dbg_if.HSIZE <= HSIZE_DWORD;
+         'h1    : HSIZE <= HSIZE_BYTE;
+         'h2    : HSIZE <= HSIZE_HWORD;
+         'h4    : HSIZE <= HSIZE_WORD;
+         default: HSIZE <= HSIZE_DWORD;
       endcase
 
 
 generate
   if (DATA_WIDTH == 32)
   begin
-    always @(posedge dbg_if.HCLK)
+    always @(posedge biu_clk)
       if (biu_strb && biu_rdy)
         case (biu_word_size)
-           'h1    : dbg_if.HWDATA <= {4{biu_di[31 -:  8]}};
-           'h2    : dbg_if.HWDATA <= {2{biu_di[31 -: 16]}};
-           default: dbg_if.HWDATA <= biu_di;
+           'h1    : HWDATA <= {4{biu_di[31 -:  8]}};
+           'h2    : HWDATA <= {2{biu_di[31 -: 16]}};
+           default: HWDATA <= biu_di;
         endcase
   end
   else //DATA_WIDTH == 64
   begin
-    always @(posedge dbg_if.HCLK)
+    always @(posedge biu_clk)
       if (biu_strb && biu_rdy)
         case (biu_word_size)
-           'h1    : dbg_if.HWDATA <= {8{biu_di[63 -:  8]}};
-           'h2    : dbg_if.HWDATA <= {4{biu_di[63 -: 16]}};
-           'h4    : dbg_if.HWDATA <= {2{biu_di[63 -: 32]}};
-           default: dbg_if.HWDATA <= biu_di;
+           'h1    : HWDATA <= {8{biu_di[63 -:  8]}};
+           'h2    : HWDATA <= {4{biu_di[63 -: 16]}};
+           'h4    : HWDATA <= {2{biu_di[63 -: 32]}};
+           default: HWDATA <= biu_di;
         endcase
   end
 endgenerate
@@ -163,13 +163,13 @@ endgenerate
   always @(posedge biu_clk,posedge biu_rst)
     if(biu_rst)
     begin
-        dbg_if.HADDR  <= 'h0;
-        dbg_if.HWRITE <= 'b0;
+        HADDR  <= 'h0;
+        HWRITE <= 'b0;
     end
     else if (biu_strb && biu_rdy)
     begin
-        dbg_if.HADDR  <=  biu_addr;
-        dbg_if.HWRITE <= ~biu_rw;
+        HADDR  <=  biu_addr;
+        HWRITE <= ~biu_rw;
     end 
 
 
@@ -206,15 +206,15 @@ endgenerate
   //
 
   // synchronize asynchronous active high reset
-  always @(posedge dbg_if.HCLK,posedge biu_rst)
+  always @(posedge HCLK,posedge biu_rst)
     if (biu_rst) ahb_rstn_sync <= {$bits(ahb_rstn_sync){1'b0}};
     else         ahb_rstn_sync <= {1'b1,ahb_rstn_sync[$bits(ahb_rstn_sync)-1:1]};
 
-  assign ahb_rstn = ~(~dbg_if.HRESETn | ~ahb_rstn_sync[0]);
+  assign ahb_rstn = ~(~HRESETn | ~ahb_rstn_sync[0]);
 
 
   // synchronize the start strobe
-  always @(posedge dbg_if.HCLK,negedge ahb_rstn)
+  always @(posedge HCLK,negedge ahb_rstn)
     if(!ahb_rstn)
     begin
         str_sync_aff1  <= 1'b0;
@@ -231,70 +231,70 @@ endgenerate
   assign start_toggle = (str_sync_aff2 != str_sync_aff2q);
 
 
-  always @(posedge dbg_if.HCLK,negedge ahb_rstn)
+  always @(posedge HCLK,negedge ahb_rstn)
     if (!ahb_rstn) start_toggle_hold <= 1'b0;
     else           start_toggle_hold <= ~ahb_transfer_ack & (start_toggle | start_toggle_hold);
 
 
   // Bus Error register
-  always @(posedge dbg_if.HCLK,negedge ahb_rstn)
+  always @(posedge HCLK,negedge ahb_rstn)
     if      (!ahb_rstn        ) biu_err <= 1'b0;
-    else if ( ahb_transfer_ack) biu_err <= dbg_if.HRESP; 
+    else if ( ahb_transfer_ack) biu_err <= HRESP; 
 
 
   // Received data register
 generate
   if (DATA_WIDTH == 32)
   begin
-    always @(posedge dbg_if.HCLK)
+    always @(posedge HCLK)
       if (ahb_transfer_ack)
         case (biu_word_size)
-           'h1    : case (dbg_if.HADDR[1:0])
-                       2'b00: biu_do <= LITTLE_ENDIAN ? {24'h0, dbg_if.HRDATA[ 7 -: 8]} : {24'h0, dbg_if.HRDATA[31 -: 8]};
-                       2'b01: biu_do <= LITTLE_ENDIAN ? {24'h0, dbg_if.HRDATA[15 -: 8]} : {24'h0, dbg_if.HRDATA[23 -: 8]};
-                       2'b10: biu_do <= LITTLE_ENDIAN ? {24'h0, dbg_if.HRDATA[23 -: 8]} : {24'h0, dbg_if.HRDATA[15 -: 8]};
-                       2'b11: biu_do <= LITTLE_ENDIAN ? {24'h0, dbg_if.HRDATA[31 -: 8]} : {24'h0, dbg_if.HRDATA[ 7 -: 8]};
+           'h1    : case (HADDR[1:0])
+                       2'b00: biu_do <= LITTLE_ENDIAN ? {24'h0, HRDATA[ 7 -: 8]} : {24'h0, HRDATA[31 -: 8]};
+                       2'b01: biu_do <= LITTLE_ENDIAN ? {24'h0, HRDATA[15 -: 8]} : {24'h0, HRDATA[23 -: 8]};
+                       2'b10: biu_do <= LITTLE_ENDIAN ? {24'h0, HRDATA[23 -: 8]} : {24'h0, HRDATA[15 -: 8]};
+                       2'b11: biu_do <= LITTLE_ENDIAN ? {24'h0, HRDATA[31 -: 8]} : {24'h0, HRDATA[ 7 -: 8]};
                     endcase
-           'h2    : case (dbg_if.HADDR[1])
-                       1'b0 : biu_do <= LITTLE_ENDIAN ? {16'h0, dbg_if.HRDATA[15 -: 16]} : {16'h0,dbg_if.HRDATA[31 -: 16]};
-                       2'b1 : biu_do <= LITTLE_ENDIAN ? {16'h0, dbg_if.HRDATA[31 -: 16]} : {16'h0,dbg_if.HRDATA[15 -: 16]};
+           'h2    : case (HADDR[1])
+                       1'b0 : biu_do <= LITTLE_ENDIAN ? {16'h0, HRDATA[15 -: 16]} : {16'h0, HRDATA[31 -: 16]};
+                       2'b1 : biu_do <= LITTLE_ENDIAN ? {16'h0, HRDATA[31 -: 16]} : {16'h0, HRDATA[15 -: 16]};
                     endcase
-           default:           biu_do <= dbg_if.HRDATA;
+           default:           biu_do <= HRDATA;
         endcase
   end
   else //DATA_WIDTH == 64
   begin
-    always @(posedge dbg_if.HCLK)
+    always @(posedge HCLK)
         if (ahb_transfer_ack)
         case (biu_word_size)
-           'h1    : case (dbg_if.HADDR[2:0])
-                       3'b000: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[ 7 -: 8]} : {56'h0, dbg_if.HRDATA[63 -: 8]};
-                       3'b001: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[15 -: 8]} : {56'h0, dbg_if.HRDATA[55 -: 8]};
-                       3'b010: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[23 -: 8]} : {56'h0, dbg_if.HRDATA[47 -: 8]};
-                       3'b011: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[31 -: 8]} : {56'h0, dbg_if.HRDATA[39 -: 8]};
-                       3'b100: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[39 -: 8]} : {56'h0, dbg_if.HRDATA[31 -: 8]};
-                       3'b101: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[47 -: 8]} : {56'h0, dbg_if.HRDATA[23 -: 8]};
-                       3'b110: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[55 -: 8]} : {56'h0, dbg_if.HRDATA[15 -: 8]};
-                       3'b111: biu_do <= LITTLE_ENDIAN ? {56'h0, dbg_if.HRDATA[63 -: 8]} : {56'h0, dbg_if.HRDATA[ 7 -: 8]};
+           'h1    : case (HADDR[2:0])
+                       3'b000: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[ 7 -: 8]} : {56'h0, HRDATA[63 -: 8]};
+                       3'b001: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[15 -: 8]} : {56'h0, HRDATA[55 -: 8]};
+                       3'b010: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[23 -: 8]} : {56'h0, HRDATA[47 -: 8]};
+                       3'b011: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[31 -: 8]} : {56'h0, HRDATA[39 -: 8]};
+                       3'b100: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[39 -: 8]} : {56'h0, HRDATA[31 -: 8]};
+                       3'b101: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[47 -: 8]} : {56'h0, HRDATA[23 -: 8]};
+                       3'b110: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[55 -: 8]} : {56'h0, HRDATA[15 -: 8]};
+                       3'b111: biu_do <= LITTLE_ENDIAN ? {56'h0, HRDATA[63 -: 8]} : {56'h0, HRDATA[ 7 -: 8]};
                     endcase
-           'h2    : case (dbg_if.HADDR[2:1])
-                       2'b00 : biu_do <= LITTLE_ENDIAN ? {48'h0, dbg_if.HRDATA[15 -: 16]} : {48'h0, dbg_if.HRDATA[63 -: 16]};
-                       2'b01 : biu_do <= LITTLE_ENDIAN ? {48'h0, dbg_if.HRDATA[31 -: 16]} : {48'h0, dbg_if.HRDATA[47 -: 16]};
-                       2'b10 : biu_do <= LITTLE_ENDIAN ? {48'h0, dbg_if.HRDATA[47 -: 16]} : {48'h0, dbg_if.HRDATA[31 -: 16]};
-                       2'b11 : biu_do <= LITTLE_ENDIAN ? {48'h0, dbg_if.HRDATA[63 -: 16]} : {48'h0, dbg_if.HRDATA[15 -: 16]};
+           'h2    : case (HADDR[2:1])
+                       2'b00 : biu_do <= LITTLE_ENDIAN ? {48'h0, HRDATA[15 -: 16]} : {48'h0, HRDATA[63 -: 16]};
+                       2'b01 : biu_do <= LITTLE_ENDIAN ? {48'h0, HRDATA[31 -: 16]} : {48'h0, HRDATA[47 -: 16]};
+                       2'b10 : biu_do <= LITTLE_ENDIAN ? {48'h0, HRDATA[47 -: 16]} : {48'h0, HRDATA[31 -: 16]};
+                       2'b11 : biu_do <= LITTLE_ENDIAN ? {48'h0, HRDATA[63 -: 16]} : {48'h0, HRDATA[15 -: 16]};
                     endcase
-           'h4    : case (dbg_if.HADDR[2])
-                       1'b0  : biu_do <= LITTLE_ENDIAN ? {32'h0, dbg_if.HRDATA[31 -: 32]} : {16'h0, dbg_if.HRDATA[63 -: 32]};
-                       2'b1  : biu_do <= LITTLE_ENDIAN ? {32'h0, dbg_if.HRDATA[63 -: 32]} : {16'h0, dbg_if.HRDATA[31 -: 32]};
+           'h4    : case (HADDR[2])
+                       1'b0  : biu_do <= LITTLE_ENDIAN ? {32'h0, HRDATA[31 -: 32]} : {16'h0, HRDATA[63 -: 32]};
+                       2'b1  : biu_do <= LITTLE_ENDIAN ? {32'h0, HRDATA[63 -: 32]} : {16'h0, HRDATA[31 -: 32]};
                     endcase
-           default:            biu_do <= dbg_if.HRDATA;
+           default:            biu_do <= HRDATA;
         endcase
   end
 endgenerate
 
 
   // Create a toggle-active ready signal to send to the TCK domain
-  always @(posedge dbg_if.HCLK,negedge ahb_rstn)
+  always @(posedge HCLK,negedge ahb_rstn)
     if      (!ahb_rstn        ) rdy_sync <= 1'b0;
     else if ( ahb_transfer_ack) rdy_sync <= ~rdy_sync;
 
@@ -302,38 +302,41 @@ endgenerate
   /////////////////////////////////////////////////////
   // State machine to create AHB accesses
 
-  assign ahb_transfer_ack = dbg_if.HREADY & (ahb_fsm_state == DATA);
+  assign ahb_transfer_ack = HREADY & (ahb_fsm_state == DATA);
 
-
-  always @ (posedge dbg_if.HCLK,negedge ahb_rstn)
+  assign HSEL      = 1'b1;
+  assign HPROT     = HPROT_DATA | HPROT_PRIVILEGED | HPROT_NON_BUFFERABLE | HPROT_NON_CACHEABLE;
+  assign HMASTLOCK = 1'b0;
+  
+  always @ (posedge HCLK,negedge ahb_rstn)
     if (!ahb_rstn)
     begin
-        dbg_if.HTRANS <= HTRANS_IDLE;
+        HTRANS <= HTRANS_IDLE;
         ahb_fsm_state <= IDLE;
     end
     else
       case (ahb_fsm_state)
          IDLE   : if (start_toggle || start_toggle_hold)
                   begin
-                      dbg_if.HTRANS <= HTRANS_NONSEQ;
+                      HTRANS        <= HTRANS_NONSEQ;
                       ahb_fsm_state <= ADDRESS;
                   end
 
          ADDRESS: begin
-                      dbg_if.HTRANS <= HTRANS_IDLE;
+                      HTRANS        <= HTRANS_IDLE;
                       ahb_fsm_state <= DATA;
                   end
 
-         DATA   : if (dbg_if.HREADY) ahb_fsm_state <= IDLE;
+         DATA   : if (HREADY) ahb_fsm_state <= IDLE;
 
          default : begin
-                       dbg_if.HTRANS <= HTRANS_IDLE;
+                       HTRANS        <= HTRANS_IDLE;
                        ahb_fsm_state <= IDLE;
                    end
       endcase
 
 
   //Only single accesses; no bursts
-  assign dbg_if.HBURST = HBURST_SINGLE;
+  assign HBURST = HBURST_SINGLE;
 endmodule
 

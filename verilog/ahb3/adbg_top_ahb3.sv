@@ -63,10 +63,34 @@ module adbg_top_ahb3 #(
 
 
   // AHB Master Interface Signals
-  ahb3lite_bus.master       dbg_if,
+  input                     HCLK,
+                            HRESETn,
+  output                    dbg_HSEL,
+  output [ADDR_WIDTH  -1:0] dbg_HADDR,
+  output [DATA_WIDTH  -1:0] dbg_HWDATA,
+  input  [DATA_WIDTH  -1:0] dbg_HRDATA,
+  output                    dbg_HWRITE,
+  output [             2:0] dbg_HSIZE,
+  output [             3:0] dbg_HBURST,
+  output [             3:0] dbg_HPROT,
+  output [             1:0] dbg_HTRANS,
+  output                    dbg_HMASTLOCK,
+  input                     dbg_HREADY,
+  input                     dbg_HRESP,
 
+  
   // APB Slave Interface Signals (JTAG Serial Port)
-  apb_bus.slave             jsp_if,
+  input                     PRESETn,
+                            PCLK,
+  input                     jsp_PSEL,
+  input                     jsp_PENABLE,
+  input                     jsp_PWRITE,
+  input  [             2:0] jsp_PADDR,
+  input  [             7:0] jsp_PWDATA,
+  output [             7:0] jsp_PRDATA,
+  output                    jsp_PREADY,
+  output                    jsp_PSLVERR,
+  
   output                    int_o,
 
   //CPU/Thread debug ports
@@ -163,6 +187,20 @@ module adbg_top_ahb3 #(
     .top_inhibit_o    ( module_inhibit [DBG_TOP_BUSIF_DEBUG_MODULE] ),
 
     //AHB signals
+    .HCLK      ( HCLK          ),
+    .HRESETn   ( HRESETn       ),
+    .HSEL      ( dbg_HSEL      ),
+    .HADDR     ( dbg_HADDR     ),
+    .HWDATA    ( dbg_HWDATA    ),
+    .HRDATA    ( dbg_HRDATA    ),
+    .HWRITE    ( dbg_HWRITE    ),
+    .HSIZE     ( dbg_HSIZE     ),
+    .HBURST    ( dbg_HBURST    ),
+    .HPROT     ( dbg_HPROT     ),
+    .HTRANS    ( dbg_HTRANS    ),
+    .HMASTLOCK ( dbg_HMASTLOCK ),
+    .HREADY    ( dbg_HREADY    ),
+    .HRESP     ( dbg_HRESP     ),
     .* );
 
 
@@ -216,6 +254,17 @@ adbg_jsp_apb_module i_dbg_jsp (
   .top_inhibit_o    ( module_inhibit [DBG_TOP_JSP_DEBUG_MODULE]),
 
   // APB connections
+  .PRESETn          ( PRESETn     ),
+  .PCLK             ( PCLK        ),
+  .PSEL             ( jsp_PSEL    ),
+  .PENABLE          ( jsp_PENABLE ),
+  .PWRITE           ( jsp_PWRITE  ),
+  .PADDR            ( jsp_PADDR   ),
+  .PWDATA           ( jsp_PWDATA  ),
+  .PRDATA           ( jsp_PRDATA  ),
+  .PREADY           ( jsp_PREADY  ),
+  .PSLVERR          ( jsp_PSLVERR ),
+
   .* );
  
 

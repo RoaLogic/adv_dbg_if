@@ -61,7 +61,18 @@ module adbg_jsp_apb_biu
                 wr_strobe_i,
 
   // APB signals
-  apb_bus.slave jsp_if,
+  input        PRESETn,
+               PCLK,
+										 
+  input        PSEL,
+  input        PENABLE,
+  input        PWRITE,
+  input  [2:0] PADDR,
+  input  [7:0] PWDATA,
+  output [7:0] PRDATA,
+  output       PREADY,
+  output       PSLVERR,
+
   output        int_o
 );
 
@@ -163,14 +174,14 @@ module adbg_jsp_apb_biu
   assign wr_fifo_not_empty       = |wr_bytes_avail;
        
   // rdata register
-  always @(posedge jsp_if.PCLK,negedge jsp_if.PRESETn)
-    if      (!jsp_if.PRESETn) rdata <= 'h0;
-    else if ( rdata_en      ) rdata <= rd_fifo_data_out;
+  always @(posedge PCLK,negedge PRESETn)
+    if      (!PRESETn ) rdata <= 'h0;
+    else if ( rdata_en) rdata <= rd_fifo_data_out;
         
   // WEN SFF
   syncflop wen_sff (
     .RESET     ( rst_i       ),
-    .DEST_CLK  ( jsp_if.PCLK ),
+    .DEST_CLK  ( PCLK        ),
     .D_SET     ( 1'b0        ),
     .D_RST     ( wda_rst     ),
     .TOGGLE_IN ( wen_tff     ),
@@ -180,7 +191,7 @@ module adbg_jsp_apb_biu
   // REN SFF
   syncflop ren_sff (
     .RESET     ( rst_i       ),
-    .DEST_CLK  ( jsp_if.PCLK ),
+    .DEST_CLK  ( PCLK        ),
     .D_SET     ( 1'b0        ),
     .D_RST     ( ren_rst     ),
     .TOGGLE_IN ( ren_tff     ),
@@ -191,7 +202,7 @@ module adbg_jsp_apb_biu
   // 'free space available' syncreg
   syncreg freespace_syncreg (
     .RST      ( rst_i         ),
-    .CLKA     ( jsp_if.PCLK   ),
+    .CLKA     ( PCLK          ),
     .CLKB     ( tck_i         ),
     .DATA_IN  ( wr_bytes_free ),
     .DATA_OUT ( bytes_free_o  )
@@ -200,7 +211,7 @@ module adbg_jsp_apb_biu
   // 'bytes available' syncreg
   syncreg bytesavail_syncreg (
     .RST      ( rst_i             ),
-    .CLKA     ( jsp_if.PCLK       ),
+    .CLKA     ( PCLK              ),
     .CLKB     ( tck_i             ),
     .DATA_IN  ( rd_bytes_avail    ),
     .DATA_OUT ( bytes_available_o )
@@ -210,7 +221,7 @@ module adbg_jsp_apb_biu
   // write FIFO
   bytefifo wr_fifo (
     .RST         ( rst_i | rx_fifo_rst ), // rst_i from JTAG clk domain, rx_fifo_rst from APB, RST is async reset
-    .CLK         ( jsp_if.PCLK         ),
+    .CLK         ( PCLK                ),
     .DATA_IN     ( data_in             ),
     .DATA_OUT    ( data_to_extbus      ),
     .PUSH_POPn   ( wpp                 ),
@@ -222,7 +233,7 @@ module adbg_jsp_apb_biu
   // read FIFO
   bytefifo rd_fifo (
     .RST         ( rst_i | tx_fifo_rst ), // rst_i from JTAG clk domain, tx_fifo_rst from APB, RST is async reset
-    .CLK         ( jsp_if.PCLK         ),
+    .CLK         ( PCLK                ),
     .DATA_IN     ( data_from_extbus    ),
     .DATA_OUT    ( rd_fifo_data_out    ),
     .PUSH_POPn   ( rpp                 ),
@@ -236,9 +247,9 @@ module adbg_jsp_apb_biu
   // State machine for the read FIFO
 
   // Sequential bit
-  always @(posedge jsp_if.PCLK,negedge jsp_if.PRESETn)
-    if (!jsp_if.PRESETn) rd_fsm_state <= RD_IDLE;
-    else                 rd_fsm_state <= next_rd_fsm_state; 
+  always @(posedge PCLK,negedge PRESETn)
+    if (!PRESETn) rd_fsm_state <= RD_IDLE;
+    else          rd_fsm_state <= next_rd_fsm_state; 
 
 
   // Determination of next state (combinatorial)
@@ -299,9 +310,9 @@ module adbg_jsp_apb_biu
   // State machine for the write FIFO
 
   // Sequential bit
-  always @(posedge jsp_if.PCLK,negedge jsp_if.PRESETn)
-    if (!jsp_if.PRESETn) wr_fsm_state <= WR_IDLE;
-    else                 wr_fsm_state <= next_wr_fsm_state; 
+  always @(posedge PCLK,negedge PRESETn)
+    if (!PRESETn) wr_fsm_state <= WR_IDLE;
+    else          wr_fsm_state <= next_wr_fsm_state; 
 
 
   // Determination of next state (combinatorial)
@@ -386,48 +397,48 @@ module adbg_jsp_apb_biu
   assign lsr              = {1'b0, rd_fifo_not_full, rd_fifo_not_full, 4'h0, wr_fifo_not_empty};   
 
   // Create writeable registers
-  always @(posedge jsp_if.PCLK,negedge jsp_if.PRESETn)
-    if (!jsp_if.PRESETn)
+  always @(posedge PCLK,negedge PRESETn)
+    if (!PRESETn)
     begin
         ier <= 'h0;
         lcr <= 'h0;
         scr <= 'h0;
     end
-    else if (jsp_if.PSEL & jsp_if.PWRITE & jsp_if.PENABLE)
-      case (jsp_if.PADDR)
-         3'b001: if (!lcr.dlab) ier <= jsp_if.PWDATA[3:0];
-         3'b011:                lcr <= jsp_if.PWDATA;
-         3'b111:                scr <= jsp_if.PWDATA;
+    else if (PSEL & PWRITE & PENABLE)
+      case (PADDR)
+         3'b001: if (!lcr.dlab) ier <= PWDATA[3:0];
+         3'b011:                lcr <= PWDATA;
+         3'b111:                scr <= PWDATA;
       endcase
 
     
   // Create handshake signals to/from the FIFOs
   // Access FIFO during APB-Setup Phase, so we acknowledge during APB-Access phase
-  assign fifo_rd  = jsp_if.PSEL & ~jsp_if.PENABLE & ~jsp_if.PWRITE & (jsp_if.PADDR == 3'b000) & ~lcr.dlab;
-  assign fifo_wr  = jsp_if.PSEL & ~jsp_if.PENABLE &  jsp_if.PWRITE & (jsp_if.PADDR == 3'b000) & ~lcr.dlab;
+  assign fifo_rd  = PSEL & ~PENABLE & ~PWRITE & (PADDR == 3'b000) & ~lcr.dlab;
+  assign fifo_wr  = PSEL & ~PENABLE &  PWRITE & (PADDR == 3'b000) & ~lcr.dlab;
 
   // APB responses
-  assign jsp_if.PREADY  = fifo_ack | reg_ack;
-  assign jsp_if.PSLVERR = 1'b0;
+  assign PREADY  = fifo_ack | reg_ack;
+  assign PSLVERR = 1'b0;
 
   // acknowledge all accesses, except to FIFOs
-  always @(posedge jsp_if.PCLK)
-    reg_ack <= jsp_if.PSEL & ~jsp_if.PENABLE & (lcr.dlab | jsp_if.PADDR != 3'b000);
+  always @(posedge PCLK)
+    reg_ack <= PSEL & ~PENABLE & (lcr.dlab | PADDR != 3'b000);
 
 
   // Create FIFO reset signals
-  assign rx_fifo_rst = jsp_if.PSEL & jsp_if.PENABLE & jsp_if.PWRITE & (jsp_if.PADDR == 3'b010) & jsp_if.PWDATA[1];
-  assign tx_fifo_rst = jsp_if.PSEL & jsp_if.PENABLE & jsp_if.PWRITE & (jsp_if.PADDR == 3'b010) & jsp_if.PWDATA[2];
+  assign rx_fifo_rst = PSEL & PENABLE & PWRITE & (PADDR == 3'b010) & PWDATA[1];
+  assign tx_fifo_rst = PSEL & PENABLE & PWRITE & (PADDR == 3'b010) & PWDATA[2];
 
 
   // Create IIR (and THR INT arm bit)
   assign rd_fifo_becoming_empty = r_fifo_en & (~rpp) & (rd_bytes_avail == 4'h1);  // "rd fifo" is the ext.bus write FIFO...
 
-  assign iir_read = jsp_if.PSEL & jsp_if.PENABLE & ~jsp_if.PWRITE & (jsp_if.PADDR == 3'b010);
+  assign iir_read = PSEL & PENABLE & ~PWRITE & (PADDR == 3'b010);
 
    
-  always @(posedge jsp_if.PCLK,negedge jsp_if.PRESETn)
-    if      (!jsp_if.PRESETn                    ) thr_int_arm <= 1'b0;
+  always @(posedge PCLK,negedge PRESETn)
+    if      (!PRESETn                           ) thr_int_arm <= 1'b0;
     else if (fifo_wr  ||  rd_fifo_becoming_empty) thr_int_arm <= 1'b1;  // Set when APB write fifo becomes empty, or on a write to it
     else if (iir_read && !wr_fifo_not_empty     ) thr_int_arm <= 1'b0;
 
@@ -440,19 +451,19 @@ module adbg_jsp_apb_biu
    
   // Create ext.bus Data Out
   always_comb
-    case (jsp_if.PADDR)
-      3'b000 : jsp_if.PRDATA = data_to_extbus;
-      3'b001 : jsp_if.PRDATA = {4'h0, ier};
-      3'b010 : jsp_if.PRDATA = iir;
-      3'b011 : jsp_if.PRDATA = lcr;
-      3'b100 : jsp_if.PRDATA = mcr;
-      3'b101 : jsp_if.PRDATA = lsr;
-      3'b110 : jsp_if.PRDATA = msr;
-      3'b111 : jsp_if.PRDATA = scr;
-      default: jsp_if.PRDATA = 'h0;
+    case (PADDR)
+      3'b000 : PRDATA = data_to_extbus;
+      3'b001 : PRDATA = {4'h0, ier};
+      3'b010 : PRDATA = iir;
+      3'b011 : PRDATA = lcr;
+      3'b100 : PRDATA = mcr;
+      3'b101 : PRDATA = lsr;
+      3'b110 : PRDATA = msr;
+      3'b111 : PRDATA = scr;
+      default: PRDATA = 'h0;
     endcase
 
-   assign data_from_extbus = jsp_if.PWDATA;  // Data to the FIFO
+   assign data_from_extbus = PWDATA;  // Data to the FIFO
 
    // Generate interrupt output
    assign int_o = (rd_fifo_not_full & thr_int_arm & ier.etbei) | (wr_fifo_not_empty & ier.erbfi);

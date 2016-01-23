@@ -57,7 +57,18 @@ module adbg_jsp_apb_module
   output                                        top_inhibit_o,
 
   // AMBA APB interface
-  apb_bus.slave                                 jsp_if,
+  input                                         PRESETn,
+                                                PCLK,
+										 
+  input                                         PSEL,
+  input                                         PENABLE,
+  input                                         PWRITE,
+  input  [                                 2:0] PADDR,
+  input  [                                 7:0] PWDATA,
+  output [                                 7:0] PRDATA,
+  output                                        PREADY,
+  output                                        PSLVERR,
+
   output                                        int_o
 );
   
