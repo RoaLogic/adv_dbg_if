@@ -62,7 +62,7 @@ module adbg_or1k_biu #(
 (
   // Debug interface signals
   input  logic                       tck_i,
-  input  logic                       trstn_i,
+  input  logic                       tlr_i,
   input  logic                [ 3:0] cpu_select_i,
   input  logic                [31:0] data_i,  // Assume short words are in UPPER order bits!
   output logic                [31:0] data_o,
@@ -114,7 +114,7 @@ module adbg_or1k_biu #(
 
    logic         valid_selection; //set to 1 if value in input selection signal is < NB_CORES
 
-    assign valid_selection = (cpu_select_i < NB_CORES) ? 1'b1 : 1'b0;
+   assign valid_selection = (cpu_select_i < NB_CORES) ? 1'b1 : 1'b0;
 
 
    //////////////////////////////////////////////////////
@@ -124,9 +124,9 @@ module adbg_or1k_biu #(
 
 
    // Latch input data on 'start' strobe, if ready.
-   always @ (posedge tck_i or negedge trstn_i)
+   always @ (posedge tck_i or posedge tlr_i)
      begin
-    if(~trstn_i) begin
+    if(tlr_i) begin
        addr_reg <= 32'h0;
        data_in_reg <= 32'h0;
        wr_reg <= 1'b0;
@@ -141,18 +141,18 @@ module adbg_or1k_biu #(
 
    // Create toggle-active strobe signal for clock sync.  This will start a transaction
    // to the CPU once the toggle propagates to the FSM in the cpu_clk domain.
-    always @ (posedge tck_i or negedge trstn_i)
+    always @ (posedge tck_i or posedge tlr_i)
     begin
-        if(~trstn_i)
+        if(tlr_i)
             str_sync <= 1'b0;
         else if(strobe_i && rdy_o) 
             str_sync <= ~str_sync;
     end 
 
    // Create rdy_o output.  Set on reset, clear on strobe (if set), set on input toggle
-    always @ (posedge tck_i or negedge trstn_i)
+    always @ (posedge tck_i or posedge tlr_i)
     begin
-        if(~trstn_i) 
+        if(tlr_i)
         begin
             rdy_sync_tff1 <= 1'b0;
             rdy_sync_tff2 <= 1'b0;
