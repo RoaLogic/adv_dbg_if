@@ -47,12 +47,12 @@ module adbg_top_ahb3 #(
 )
 (
   // JTAG signals
-  input                     trstn_i,
   input                     tck_i,
   input                     tdi_i,
   output reg                tdo_o,
 
   // TAP states
+  input                     tlr_i,       //TestLogicReset
   input                     shift_dr_i,
   input                     pause_dr_i,
   input                     update_dr_i,
@@ -71,7 +71,7 @@ module adbg_top_ahb3 #(
   input  [DATA_WIDTH  -1:0] dbg_HRDATA,
   output                    dbg_HWRITE,
   output [             2:0] dbg_HSIZE,
-  output [             3:0] dbg_HBURST,
+  output [             2:0] dbg_HBURST,
   output [             3:0] dbg_HPROT,
   output [             1:0] dbg_HTRANS,
   output                    dbg_HMASTLOCK,
@@ -144,8 +144,8 @@ module adbg_top_ahb3 #(
 
   //////////////////////////////////////////////////////////
   // Module select register and select signals
-  always @(posedge tck_i, negedge trstn_i)
-  if      (!trstn_i)
+  always @(posedge tck_i, posedge tlr_i)
+  if      (tlr_i)
     module_id_reg <= 'h0;
   else if (debug_select_i && select_cmd && update_dr_i && !select_inhibit)       // Chain select
     module_id_reg <= module_id_in;
@@ -160,9 +160,9 @@ module adbg_top_ahb3 #(
 
 ///////////////////////////////////////////////
 // Data input shift register
-  always @ (posedge tck_i,negedge trstn_i)
-    if      (!trstn_i                     ) input_shift_reg <= 'h0;
-    else if ( debug_select_i && shift_dr_i) input_shift_reg <= {tdi_i, input_shift_reg[DBG_TOP_DATAREG_LEN-1:1]};
+  always @ (posedge tck_i,posedge tlr_i)
+    if      (tlr_i                       ) input_shift_reg <= 'h0;
+    else if (debug_select_i && shift_dr_i) input_shift_reg <= {tdi_i, input_shift_reg[DBG_TOP_DATAREG_LEN-1:1]};
 
   /*
    * AHB3 debug module instantiation
@@ -172,12 +172,12 @@ module adbg_top_ahb3 #(
     .DATA_WIDTH  ( DATA_WIDTH  )
   ) i_dbg_ahb (
     // JTAG signals
-    .trstn_i          ( trstn_i      ),
     .tck_i            ( tck_i        ),
     .module_tdo_o     ( tdo_busif    ),
     .tdi_i            ( tdi_i        ),
 
     // TAP states
+    .tlr_i            ( tlr_i        ),
     .capture_dr_i     ( capture_dr_i ),
     .shift_dr_i       ( shift_dr_i   ),
     .update_dr_i      ( update_dr_i  ),
@@ -209,12 +209,12 @@ module adbg_top_ahb3 #(
   )
   i_dbg_cpu_or1k (
     // JTAG signals
-   .trstn_i         ( trstn_i      ),
    .tck_i           ( tck_i        ),
    .module_tdo_o    ( tdo_cpu      ),
    .tdi_i           ( tdi_i        ),
 
    // TAP states
+   .tlr_i           ( tlr_i        ),
    .capture_dr_i    ( capture_dr_i ),
    .shift_dr_i      ( shift_dr_i   ),
    .update_dr_i     ( update_dr_i  ),
@@ -237,17 +237,17 @@ module adbg_top_ahb3 #(
 
 
 adbg_jsp_apb_module i_dbg_jsp (
-  .rst_i            (~trstn_i),
+  .rst_i            ( tlr_i        ),
 
   // JTAG signals
-  .tck_i            ( tck_i),
-  .module_tdo_o     ( tdo_jsp),
-  .tdi_i            ( tdi_i),
+  .tck_i            ( tck_i        ),
+  .module_tdo_o     ( tdo_jsp      ),
+  .tdi_i            ( tdi_i        ),
 
   // TAP states
-  .capture_dr_i     ( capture_dr_i),
-  .shift_dr_i       ( shift_dr_i),
-  .update_dr_i      ( update_dr_i),
+  .capture_dr_i     ( capture_dr_i ),
+  .shift_dr_i       ( shift_dr_i   ),
+  .update_dr_i      ( update_dr_i) ,
 
   .data_register_i  ( input_shift_reg[DBG_TOP_DATAREG_LEN-1 -: DBG_JSP_DATAREG_LEN]),
   .module_select_i  ( module_selects [DBG_TOP_JSP_DEBUG_MODULE]),
