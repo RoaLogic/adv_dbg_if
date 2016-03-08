@@ -68,7 +68,7 @@ module adbg_or1k_status_reg  #(
 )
 (
   input                       tck_i,
-  input                       trstn_i,
+  input                       tlr_i,
   input                       we_i,
   input                       cpu_clk_i,
   input                       cpu_rstn_i,
@@ -95,8 +95,8 @@ module adbg_or1k_status_reg  #(
 
 
    // Synchronizing
-   always @(posedge tck_i,negedge trstn_i)
-     if (!trstn_i)
+   always @(posedge tck_i,posedge tlr_i)
+     if (tlr_i)
      begin
          stall_bp_csff <= 'h0;
          stall_bp_tck  <= 'h0;
@@ -130,8 +130,8 @@ module adbg_or1k_status_reg  #(
   // Writing data to the control registers (stall)
   // This can be set either by the debug host, or by
   // a CPU breakpoint.  It can only be cleared by the host.
-  always @(posedge tck_i,negedge trstn_i)
-    if (!trstn_i) stall_reg <= 'h0;
+  always @(posedge tck_i,posedge tlr_i)
+    if (tlr_i) stall_reg <= 'h0;
     else
     for (int i=0;i<NB_CORES;i++)
       if      (stall_bp_tck[i]) stall_reg[i] <= 1'b1;
