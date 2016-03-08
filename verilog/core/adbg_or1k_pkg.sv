@@ -53,7 +53,7 @@ package adbg_or1k_pkg;
   parameter DBG_OR1K_DATAREG_LEN = 57;
 
   // Size of the register-select register
-  parameter DBG_OR1K_REGSELECT_LEN = 3;
+  parameter DBG_OR1K_REGSELECT_LEN = 1;
 
   // Register index definitions for module-internal registers
   // Index 0 is the Status register, used for stall and reset
