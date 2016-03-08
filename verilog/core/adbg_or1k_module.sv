@@ -94,9 +94,7 @@ module adbg_or1k_module #(
   output logic [NB_CORES-1:0]                            cpu_stall_o,
   output logic [NB_CORES-1:0]                            cpu_stb_o,
   output logic [NB_CORES-1:0]                            cpu_we_o,
-  input  logic [NB_CORES-1:0]                            cpu_ack_i,
-
-output [7:0] test
+  input  logic [NB_CORES-1:0]                            cpu_ack_i
 );
   //////////////////////////////////////////////////////////////////
   //
@@ -196,17 +194,6 @@ output [7:0] test
   //
   // Module Body
   //
-assign test[0] = cpu_stall_o;
-assign test[1] = burst_instruction;
-assign test[2] = module_cmd;
-assign test[3] = module_select_i;
-assign test[4] = update_dr_i;
-
-assign test[5] = biu_strobe;
-assign test[6] = cpu_stb_o;
-assign test[7] = cpu_ack_i;
-
-
 
   /////////////////////////////////////////////////
   // Combinatorial assignments
