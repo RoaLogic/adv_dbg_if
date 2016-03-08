@@ -61,19 +61,19 @@ module adbg_jsp_apb_biu
                 wr_strobe_i,
 
   // APB signals
-  input        PRESETn,
-               PCLK,
+  input            PRESETn,
+                   PCLK,
 										 
-  input        PSEL,
-  input        PENABLE,
-  input        PWRITE,
-  input  [2:0] PADDR,
-  input  [7:0] PWDATA,
-  output [7:0] PRDATA,
-  output       PREADY,
-  output       PSLVERR,
+  input            PSEL,
+  input            PENABLE,
+  input            PWRITE,
+  input      [2:0] PADDR,
+  input      [7:0] PWDATA,
+  output reg [7:0] PRDATA,
+  output           PREADY,
+  output           PSLVERR,
 
-  output        int_o
+  output           int_o
 );
 
   //////////////////////////////////////////////////////////////////
