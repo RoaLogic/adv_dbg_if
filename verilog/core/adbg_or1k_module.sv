@@ -75,6 +75,7 @@ module adbg_or1k_module #(
   input  logic                                           tdi_i,
 
   // TAP states
+  input  logic                                           tlr_i,
   input  logic                                           capture_dr_i,
   input  logic                                           shift_dr_i,
   input  logic                                           update_dr_i,
@@ -82,10 +83,9 @@ module adbg_or1k_module #(
   input  logic [adbg_or1k_pkg::DBG_OR1K_DATAREG_LEN-1:0] data_register_i,
   input  logic                                           module_select_i,
   output logic                                           top_inhibit_o,
-  input  logic                                           trstn_i,
 
-  // Interface to OR1200 debug unit
-  input                                                  cpu_clk_i,    // 'bus' style interface to SPRs
+  // Interface to debug unit
+  input                                                  cpu_clk_i, 
   input                                                  cpu_rstn_i,
   output logic [NB_CORES-1:0]  [CPU_ADDR_WIDTH     -1:0] cpu_addr_o,
   input  logic [NB_CORES-1:0]  [CPU_DATA_WIDTH     -1:0] cpu_data_i,
@@ -94,9 +94,10 @@ module adbg_or1k_module #(
   output logic [NB_CORES-1:0]                            cpu_stall_o,
   output logic [NB_CORES-1:0]                            cpu_stb_o,
   output logic [NB_CORES-1:0]                            cpu_we_o,
-  input  logic [NB_CORES-1:0]                            cpu_ack_i
-);
+  input  logic [NB_CORES-1:0]                            cpu_ack_i,
 
+output [7:0] test
+);
   //////////////////////////////////////////////////////////////////
   //
   // Constants
@@ -119,7 +120,7 @@ module adbg_or1k_module #(
   //
 
   // Registers to hold state etc.
-  reg  [                      31:0] address_counter;          // Holds address for next Wishbone access
+  reg  [                      31:0] address_counter;          // Holds address for next CPU access
   reg  [                       5:0] bit_count;                // How many bits have been shifted in/out
   reg  [                      15:0] word_count;               // bytes remaining in current burst command
   reg  [                       3:0] operation;                // holds the current command (rd/wr, word size)
@@ -195,6 +196,17 @@ module adbg_or1k_module #(
   //
   // Module Body
   //
+assign test[0] = cpu_stall_o;
+assign test[1] = burst_instruction;
+assign test[2] = module_cmd;
+assign test[3] = module_select_i;
+assign test[4] = update_dr_i;
+
+assign test[5] = biu_strobe;
+assign test[6] = cpu_stb_o;
+assign test[7] = cpu_ack_i;
+
+
 
   /////////////////////////////////////////////////
   // Combinatorial assignments
@@ -204,10 +216,10 @@ module adbg_or1k_module #(
   assign address_data_in =    data_register_i[DBG_OR1K_DATAREG_LEN-10 -: 32];
   assign count_data_in   =    data_register_i[DBG_OR1K_DATAREG_LEN-42 -: 16];
 
-  assign data_to_biu     = {tdi_i,data_register_i[DBG_OR1K_DATAREG_LEN-1 -: 32]};
+  assign data_to_biu     = {tdi_i,data_register_i[DBG_OR1K_DATAREG_LEN-1 -: 31]};
 
-  assign reg_select_data = data_register_i[DBG_OR1K_DATAREG_LEN -6                         -: DBG_OR1K_REGSELECT_LEN];
-  assign status_reg_data = data_register_i[DBG_OR1K_DATAREG_LEN -6 -DBG_OR1K_REGSELECT_LEN -: NB_CORES];
+  assign reg_select_data = data_register_i[DBG_OR1K_DATAREG_LEN - 6                         -: DBG_OR1K_REGSELECT_LEN];
+  assign status_reg_data = data_register_i[DBG_OR1K_DATAREG_LEN -10 -DBG_OR1K_REGSELECT_LEN -: NB_CORES]; //data is sent first, then module_cmd, operation, cpu_select
 
 
   ////////////////////////////////////////////////
@@ -232,17 +244,17 @@ module adbg_or1k_module #(
   ////////////////////////////////////////////////
   // Module-internal register select register (no, that's not redundant.)
   // Also internal register output MUX
-  always @(posedge tck_i,negedge trstn_i)
-    if      (!trstn_i     ) internal_register_select <= 'h0;
-    else if ( regsel_ld_en) internal_register_select <= reg_select_data;
+  always @(posedge tck_i,posedge tlr_i)
+    if      (tlr_i       ) internal_register_select <= 'h0;
+    else if (regsel_ld_en) internal_register_select <= reg_select_data;
 
 
   ////////////////////////////////////////////////
   // CPU select register
   //
-  always @(posedge tck_i,negedge trstn_i)
-   if      (!trstn_i     ) cpu_select <= 'h0;
-   else if ( cpusel_ld_en) cpu_select <= cpu_select_in;
+  always @(posedge tck_i,posedge tlr_i)
+   if      (tlr_i       ) cpu_select <= 'h0;
+   else if (cpusel_ld_en) cpu_select <= cpu_select_in;
 
    // This is completely unnecessary here, since the module has only 1 internal
    // register.  However, to make the module expandable, it is included anyway.
@@ -268,11 +280,11 @@ module adbg_or1k_module #(
     .NB_CORES ( NB_CORES )
   )
   or1k_statusreg_i (
+    .tck_i       ( tck_i               ),
+    .tlr_i       ( tlr_i               ),
     .data_i      ( status_reg_data     ),
     .we_i        ( status_reg_wr       ),
-    .tck_i       ( tck_i               ),
     .bp_i        ( cpu_bp_i            ),
-    .trstn_i     ( trstn_i             ),
     .cpu_clk_i   ( cpu_clk_i           ),
     .cpu_rstn_i  ( cpu_rstn_i          ),
     .ctrl_reg_o  ( internal_reg_status ),
@@ -286,26 +298,26 @@ module adbg_or1k_module #(
 
   // Technically, since this data (sometimes) comes from the input shift reg, we should latch on
   // negedge, per the JTAG spec. But that makes things difficult when incrementing.
-  always @(posedge tck_i,negedge trstn_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
-    if      (!trstn_i   ) address_counter <= 'h0;
-    else if ( addr_ct_en) address_counter <= data_to_addr_counter;
+  always @(posedge tck_i,posedge tlr_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
+    if      (tlr_i     ) address_counter <= 'h0;
+    else if (addr_ct_en) address_counter <= data_to_addr_counter;
 
 
   ////////////////////////////////////////
   // Opcode latch
   ////////////////////////////////////////
-  always @(posedge tck_i,negedge trstn_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
-    if      (!trstn_i  ) operation <= 'h0;
-    else if ( op_reg_en) operation <= operation_in;
+  always @(posedge tck_i,posedge tlr_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
+    if      (tlr_i  ) operation <= 'h0;
+    else if (op_reg_en) operation <= operation_in;
 
 
   //////////////////////////////////////
   // Bit counter
   //////////////////////////////////////
-  always @(posedge tck_i,negedge trstn_i)
-    if      (!trstn_i    ) bit_count <= 6'h0;
-    else if ( bit_ct_rst ) bit_count <= 6'h0;
-    else if ( bit_ct_en  ) bit_count <= bit_count + 6'h1;
+  always @(posedge tck_i,posedge tlr_i)
+    if      (tlr_i     ) bit_count <= 6'h0;
+    else if (bit_ct_rst) bit_count <= 6'h0;
+    else if (bit_ct_en ) bit_count <= bit_count + 6'h1;
 
   assign bit_count_max = (bit_count == word_size_bits) ? 1'b1 : 1'b0 ;
   assign bit_count_32  = (bit_count == 6'h20) ? 1'b1 : 1'b0;
@@ -319,9 +331,9 @@ module adbg_or1k_module #(
 
   // Technically, since this data (sometimes) comes from the input shift reg, we should latch on
   // negedge, per the JTAG spec. But that makes things difficult when incrementing.
-  always @(posedge tck_i,negedge trstn_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
-    if      (!trstn_i    ) word_count <= 'h0;
-    else if ( word_ct_en ) word_count <= data_to_word_counter;
+  always @(posedge tck_i,posedge tlr_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
+    if      (tlr_i     ) word_count <= 'h0;
+    else if (word_ct_en) word_count <= data_to_word_counter;
 
   assign word_count_zero = ~|word_count;
 
@@ -331,10 +343,10 @@ module adbg_or1k_module #(
   /////////////////////////////////////////////////////
   assign out_reg_data = out_reg_data_sel ? data_from_internal_reg : data_from_biu;
 
-  always @(posedge tck_i or negedge trstn_i)
-    if      (!trstn_i          ) data_out_shift_reg <= 'h0;
-    else if ( out_reg_ld_en    ) data_out_shift_reg <= out_reg_data;
-    else if ( out_reg_shift_en ) data_out_shift_reg <= {1'b0, data_out_shift_reg[31:1]};
+  always @(posedge tck_i or posedge tlr_i)
+    if      (tlr_i           ) data_out_shift_reg <= 'h0;
+    else if (out_reg_ld_en   ) data_out_shift_reg <= out_reg_data;
+    else if (out_reg_shift_en) data_out_shift_reg <= {1'b0, data_out_shift_reg[31:1]};
 
 
     always_comb
@@ -357,7 +369,7 @@ module adbg_or1k_module #(
   or1k_biu_i (
     // Debug interface signals
     .tck_i        ( tck_i           ),
-    .trstn_i      ( trstn_i         ),
+    .tlr_i        ( tlr_i           ),
     .cpu_select_i ( cpu_select      ),
     .data_i       ( data_to_biu     ),
     .data_o       ( data_from_biu   ),
@@ -384,7 +396,7 @@ module adbg_or1k_module #(
   assign crc_data_in = (crc_in_sel) ? tdi_i : data_out_shift_reg[0];  // MUX, write or read data
 
   adbg_crc32 or1k_crc_i (
-    .rstn       ( trstn_i        ),
+    .rstn       (~tlr_i          ),
     .clk        ( tck_i          ),
     .data       ( crc_data_in    ),
     .enable     ( crc_en         ),
@@ -401,9 +413,9 @@ module adbg_or1k_module #(
   ////////////////////////////////////////
 
   // sequential part of the FSM
-  always @(posedge tck_i,negedge trstn_i)
-    if (!trstn_i) module_state <= STATE_idle;
-    else          module_state <= module_next_state;
+  always @(posedge tck_i,posedge tlr_i)
+    if (tlr_i) module_state <= STATE_idle;
+    else       module_state <= module_next_state;
 
 
   // Determination of next state; purely combinatorial
