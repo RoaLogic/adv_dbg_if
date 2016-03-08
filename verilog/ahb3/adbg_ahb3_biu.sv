@@ -62,20 +62,20 @@ module adbg_ahb3_biu #(
 
 
   // AHB Master signals
-  input                     HCLK,
-                            HRESETn,
-  output                    HSEL,
-  output [ADDR_WIDTH  -1:0] HADDR,
-  output [DATA_WIDTH  -1:0] HWDATA,
-  input  [DATA_WIDTH  -1:0] HRDATA,
-  output                    HWRITE,
-  output [             2:0] HSIZE,
-  output [             3:0] HBURST,
-  output [             3:0] HPROT,
-  output [             1:0] HTRANS,
-  output                    HMASTLOCK,
-  input                     HREADY,
-  input                     HRESP
+  input                       HCLK,
+                              HRESETn,
+  output                      HSEL,
+  output reg [ADDR_WIDTH-1:0] HADDR,
+  output reg [DATA_WIDTH-1:0] HWDATA,
+  input      [DATA_WIDTH-1:0] HRDATA,
+  output reg                  HWRITE,
+  output reg [           2:0] HSIZE,
+  output     [           2:0] HBURST,
+  output     [           3:0] HPROT,
+  output reg [           1:0] HTRANS,
+  output                      HMASTLOCK,
+  input                       HREADY,
+  input                       HRESP
 );
   //////////////////////////////////////////////////////////////////
   //
