@@ -294,7 +294,7 @@ module adbg_or1k_module #(
   // Opcode latch
   ////////////////////////////////////////
   always @(posedge tck_i,posedge tlr_i)  // JTAG spec specifies latch on negative edge in UPDATE_DR state
-    if      (tlr_i  ) operation <= 'h0;
+    if      (tlr_i    ) operation <= 'h0;
     else if (op_reg_en) operation <= operation_in;
 
 
@@ -302,12 +302,12 @@ module adbg_or1k_module #(
   // Bit counter
   //////////////////////////////////////
   always @(posedge tck_i,posedge tlr_i)
-    if      (tlr_i     ) bit_count <= 6'h0;
-    else if (bit_ct_rst) bit_count <= 6'h0;
-    else if (bit_ct_en ) bit_count <= bit_count + 6'h1;
+    if      (tlr_i     ) bit_count <= 'h0;
+    else if (bit_ct_rst) bit_count <= 'h0;
+    else if (bit_ct_en ) bit_count <= bit_count + 'h1;
 
-  assign bit_count_max = (bit_count == word_size_bits) ? 1'b1 : 1'b0 ;
-  assign bit_count_32  = (bit_count == 6'h20) ? 1'b1 : 1'b0;
+  assign bit_count_max = (bit_count == word_size_bits);
+  assign bit_count_32  = (bit_count == 'd32);
 
 
   ////////////////////////////////////////
