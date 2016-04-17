@@ -265,17 +265,17 @@ module adbg_bus_module_core #(
                        word_size_bytes <= 'd2;
                        rd_op           <= 'b1;
                    end
-        BREAD32  : begin
+         BREAD32 : begin
                        word_size_bits  <= 'd31; // Bits is actually bits-1, to make the FSM easier
                        word_size_bytes <= 'd4;
                        rd_op           <= 'b1;
                    end
-        BREAD64  : begin
+         BREAD64 : begin
                        word_size_bits  <= 'd63; // Bits is actually bits-1, to make the FSM easier
                        word_size_bytes <= 'd8;
                        rd_op           <= 'b1;
                    end
-        default :  begin
+         default:  begin
                        word_size_bits  <= 'hx;
                        word_size_bytes <= 'hx;
                        rd_op           <= 'bx;
@@ -427,7 +427,7 @@ module adbg_bus_module_core #(
        STATE_idle:
          if      (module_cmd && module_select && update_dr_i && burst_read ) module_next_state = STATE_Rbegin;
          else if (module_cmd && module_select && update_dr_i && burst_write) module_next_state = STATE_Wready;
-         else                                                                 module_next_state = STATE_idle;
+         else                                                                module_next_state = STATE_idle;
 
        STATE_Rbegin:
          if (word_count_zero) module_next_state = STATE_idle;  // set up a burst of size 0, illegal.
