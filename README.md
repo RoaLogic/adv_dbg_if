@@ -15,6 +15,5 @@ Changes compared to the Opencores version:
 - Added support for non-32bit bus interfaces
 - Moved JSP to 8bit data interface
 
-ToDo:
-- More cleaning up to do (resets, general code, ...)
-- Real hardware tests
+Current status:
+- Core is up and running, happily debugging RISC-V. Tested in HW on an Altera development board (using the Altera virtual JTAG interface), and in simulations using VPI and FileIO JTAG
