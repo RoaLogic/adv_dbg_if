@@ -209,63 +209,64 @@ module adbg_top_ahb3 #(
   )
   i_dbg_cpu_or1k (
     // JTAG signals
-   .tck_i           ( tck_i        ),
-   .module_tdo_o    ( tdo_cpu      ),
-   .tdi_i           ( tdi_i        ),
+    .tck_i           ( tck_i        ),
+    .module_tdo_o    ( tdo_cpu      ),
+    .tdi_i           ( tdi_i        ),
 
-   // TAP states
-   .tlr_i           ( tlr_i        ),
-   .capture_dr_i    ( capture_dr_i ),
-   .shift_dr_i      ( shift_dr_i   ),
-   .update_dr_i     ( update_dr_i  ),
+    // TAP states
+    .tlr_i           ( tlr_i        ),
+    .capture_dr_i    ( capture_dr_i ),
+    .shift_dr_i      ( shift_dr_i   ),
+    .update_dr_i     ( update_dr_i  ),
 
-   .data_register_i ( input_shift_reg[DBG_TOP_DATAREG_LEN-1 -: DBG_OR1K_DATAREG_LEN]),
-   .module_select_i ( module_selects [DBG_TOP_CPU_DEBUG_MODULE]),
-   .top_inhibit_o   ( module_inhibit [DBG_TOP_CPU_DEBUG_MODULE]),
+    .data_register_i ( input_shift_reg[DBG_TOP_DATAREG_LEN-1 -: DBG_OR1K_DATAREG_LEN]),
+    .module_select_i ( module_selects [DBG_TOP_CPU_DEBUG_MODULE]),
+    .top_inhibit_o   ( module_inhibit [DBG_TOP_CPU_DEBUG_MODULE]),
 
-   // CPU signals
-  .cpu_rstn_i      ( cpu_rstn_i  ),
-  .cpu_clk_i       ( cpu_clk_i   ), 
-  .cpu_addr_o      ( cpu_addr_o  ), 
-  .cpu_data_i      ( cpu_data_i  ), 
-  .cpu_data_o      ( cpu_data_o  ),
-  .cpu_bp_i        ( cpu_bp_i    ),
-  .cpu_stall_o     ( cpu_stall_o ),
-  .cpu_stb_o       ( cpu_stb_o   ),
-  .cpu_we_o        ( cpu_we_o    ),
-  .cpu_ack_i       ( cpu_ack_i   ) );
+    // CPU signals
+    .cpu_rstn_i      ( cpu_rstn_i  ),
+    .cpu_clk_i       ( cpu_clk_i   ), 
+    .cpu_addr_o      ( cpu_addr_o  ), 
+    .cpu_data_i      ( cpu_data_i  ), 
+    .cpu_data_o      ( cpu_data_o  ),
+    .cpu_bp_i        ( cpu_bp_i    ),
+    .cpu_stall_o     ( cpu_stall_o ),
+    .cpu_stb_o       ( cpu_stb_o   ),
+    .cpu_we_o        ( cpu_we_o    ),
+    .cpu_ack_i       ( cpu_ack_i   )
+  );
 
 
-adbg_jsp_apb_module i_dbg_jsp (
-  .rst_i            ( tlr_i        ),
+  adbg_jsp_apb_module i_dbg_jsp (
+    .rst_i            ( tlr_i        ),
 
-  // JTAG signals
-  .tck_i            ( tck_i        ),
-  .module_tdo_o     ( tdo_jsp      ),
-  .tdi_i            ( tdi_i        ),
+    // JTAG signals
+    .tck_i            ( tck_i        ),
+    .module_tdo_o     ( tdo_jsp      ),
+    .tdi_i            ( tdi_i        ),
 
-  // TAP states
-  .capture_dr_i     ( capture_dr_i ),
-  .shift_dr_i       ( shift_dr_i   ),
-  .update_dr_i      ( update_dr_i) ,
+    // TAP states
+    .capture_dr_i     ( capture_dr_i ),
+    .shift_dr_i       ( shift_dr_i   ),
+    .update_dr_i      ( update_dr_i) ,
 
-  .data_register_i  ( input_shift_reg[DBG_TOP_DATAREG_LEN-1 -: DBG_JSP_DATAREG_LEN]),
-  .module_select_i  ( module_selects [DBG_TOP_JSP_DEBUG_MODULE]),
-  .top_inhibit_o    ( module_inhibit [DBG_TOP_JSP_DEBUG_MODULE]),
+    .data_register_i  ( input_shift_reg[DBG_TOP_DATAREG_LEN-1 -: DBG_JSP_DATAREG_LEN]),
+    .module_select_i  ( module_selects [DBG_TOP_JSP_DEBUG_MODULE]),
+    .top_inhibit_o    ( module_inhibit [DBG_TOP_JSP_DEBUG_MODULE]),
 
-  // APB connections
-  .PRESETn          ( PRESETn     ),
-  .PCLK             ( PCLK        ),
-  .PSEL             ( jsp_PSEL    ),
-  .PENABLE          ( jsp_PENABLE ),
-  .PWRITE           ( jsp_PWRITE  ),
-  .PADDR            ( jsp_PADDR   ),
-  .PWDATA           ( jsp_PWDATA  ),
-  .PRDATA           ( jsp_PRDATA  ),
-  .PREADY           ( jsp_PREADY  ),
-  .PSLVERR          ( jsp_PSLVERR ),
+    // APB connections
+    .PRESETn          ( PRESETn     ),
+    .PCLK             ( PCLK        ),
+    .PSEL             ( jsp_PSEL    ),
+    .PENABLE          ( jsp_PENABLE ),
+    .PWRITE           ( jsp_PWRITE  ),
+    .PADDR            ( jsp_PADDR   ),
+    .PWDATA           ( jsp_PWDATA  ),
+    .PRDATA           ( jsp_PRDATA  ),
+    .PREADY           ( jsp_PREADY  ),
+    .PSLVERR          ( jsp_PSLVERR ),
 
-  .* );
+    .* );
  
 
   assign module_inhibit[DBG_TOP_RESERVED_DBG_MODULE] = 1'b0;
