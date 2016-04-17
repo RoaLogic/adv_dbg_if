@@ -67,14 +67,16 @@ module adbg_or1k_status_reg  #(
   parameter NB_CORES = 4
 )
 (
-  input                       tck_i,
   input                       tlr_i,
+  input                       tck_i,
   input                       we_i,
-  input                       cpu_clk_i,
+  output logic [NB_CORES-1:0] ctrl_reg_o,
+
+
   input                       cpu_rstn_i,
+  input                       cpu_clk_i,
   input  logic [NB_CORES-1:0] data_i,
   input  logic [NB_CORES-1:0] bp_i,
-  output logic [NB_CORES-1:0] ctrl_reg_o,
   output logic [NB_CORES-1:0] cpu_stall_o
 );
 
