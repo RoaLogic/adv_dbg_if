@@ -99,8 +99,8 @@ module adbg_bus_module_core #(
   //Bus Interface Unit ports
   output                       biu_clk,
                                biu_rst, //BIU reset
-  output     [ADDR_WIDTH -1:0] biu_di,  //data towards BIU
-  input      [ADDR_WIDTH -1:0] biu_do,  //data from BIU
+  output     [DATA_WIDTH -1:0] biu_di,  //data towards BIU
+  input      [DATA_WIDTH -1:0] biu_do,  //data from BIU
   output     [ADDR_WIDTH -1:0] biu_addr,
   output                       biu_strb,
                                biu_rw,
