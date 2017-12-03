@@ -64,7 +64,6 @@ module adbg_top_wb #(
 
   // WISHBONE Master Interface Signals
   input                     wb_clk_i,
-  input                     wb_rst_i,
 
   output                    wb_cyc_o,
   output                    wb_stb_o,
@@ -80,7 +79,7 @@ module adbg_top_wb #(
 
   // WISHBONE Target Interface Signals (JTAG Serial Port)
   input                     wb_jsp_clk_i,
-                            wb_jsp_rst_i,
+  input                     wb_jsp_rst_i,
   input                     wb_jsp_cyc_i,
   input                     wb_jsp_stb_i,
   input                     wb_jsp_we_i,
@@ -206,7 +205,6 @@ module adbg_top_wb #(
   )
   i_dbg_cpu_or1k (
     // JTAG signals
-   .trstn_i         ( trstn_i      ),
    .tck_i           ( tck_i        ),
    .module_tdo_o    ( tdo_cpu      ),
    .tdi_i           ( tdi_i        ),
