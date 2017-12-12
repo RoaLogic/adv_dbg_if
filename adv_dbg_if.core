@@ -1,0 +1,31 @@
+CAPI=1
+[main]
+description = "Advanced Debug System Interface provides jtag debugging to cores"
+
+[fileset adv_dbg_if]
+files =
+ verilog/wb/adbg_top_wb.sv
+ verilog/wb/adbg_wb_pkg.sv
+ verilog/wb/adbg_wb_biu.sv
+ verilog/wb/adbg_wb_module.sv
+ verilog/wb/adbg_jsp_wb_biu.sv
+ verilog/wb/adbg_jsp_wb_module.sv
+ verilog/ahb3/adbg_top_ahb3.sv
+ verilog/ahb3/adbg_ahb3_pkg.sv
+ verilog/ahb3/adbg_ahb3_biu.sv
+ verilog/ahb3/adbg_ahb3_module.sv
+ verilog/ahb3/adbg_jsp_apb_biu.sv
+ verilog/ahb3/adbg_jsp_apb_module.sv
+ verilog/core/adbg_pkg.sv
+ verilog/core/adbg_bus_module_core.sv
+ verilog/core/adbg_jsp_pkg.sv
+ verilog/core/adbg_jsp_module_core.sv
+ verilog/core/adbg_or1k_pkg.sv
+ verilog/core/adbg_or1k_biu.sv
+ verilog/core/adbg_or1k_module.sv
+ verilog/core/adbg_or1k_status_reg.sv
+ verilog/core/adbg_crc32.v
+ verilog/core/syncflop.v
+ verilog/core/bytefifo.v
+ verilog/core/syncreg.v
+file_type = systemVerilogSource

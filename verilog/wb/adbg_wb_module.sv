@@ -50,12 +50,12 @@ module adbg_wb_module #(
 )
 (
   // JTAG signals
-  input                     trstn_i,
   input                     tck_i,
   output                    module_tdo_o,
   input                     tdi_i,
 
   // TAP states
+  input                     tlr_i,
   input                     capture_dr_i,
   input                     shift_dr_i,
   input                     update_dr_i,
@@ -128,7 +128,7 @@ module adbg_wb_module #(
   )
   bus_module_core_inst (
     //Debug Module ports
-    .dbg_rst ( ~trstn_i ),
+    .dbg_rst ( tlr_i ),
     .dbg_clk ( tck_i ),
     .dbg_tdi ( tdi_i ),
     .dbg_tdo ( module_tdo_o ),

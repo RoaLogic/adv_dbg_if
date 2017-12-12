@@ -70,7 +70,7 @@ module adbg_wb_biu #(
   // Wishbone signals
   input                         wb_clk_i,
   output reg                    wb_cyc_o,
-         reg                    wb_stb_o,
+  output reg                    wb_stb_o,
                                 wb_we_o,
   output     [             2:0] wb_cti_o,
   output     [             1:0] wb_bte_o,

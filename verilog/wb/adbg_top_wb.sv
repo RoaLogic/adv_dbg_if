@@ -47,12 +47,12 @@ module adbg_top_wb #(
 )
 (
   // JTAG signals
-  input                     trstn_i,
   input                     tck_i,
   input                     tdi_i,
   output reg                tdo_o,
 
   // TAP states
+  input                     tlr_i,       //TestLogicReset
   input                     shift_dr_i,
   input                     pause_dr_i,
   input                     update_dr_i,
@@ -64,7 +64,6 @@ module adbg_top_wb #(
 
   // WISHBONE Master Interface Signals
   input                     wb_clk_i,
-  input                     wb_rst_i,
 
   output                    wb_cyc_o,
   output                    wb_stb_o,
@@ -80,7 +79,7 @@ module adbg_top_wb #(
 
   // WISHBONE Target Interface Signals (JTAG Serial Port)
   input                     wb_jsp_clk_i,
-                            wb_jsp_rst_i,
+  input                     wb_jsp_rst_i,
   input                     wb_jsp_cyc_i,
   input                     wb_jsp_stb_i,
   input                     wb_jsp_we_i,
@@ -142,8 +141,8 @@ module adbg_top_wb #(
 
   //////////////////////////////////////////////////////////
   // Module select register and select signals
-  always @(posedge tck_i, negedge trstn_i)
-  if      (!trstn_i)
+  always @(posedge tck_i, posedge tlr_i)
+  if (tlr_i)
     module_id_reg <= 'h0;
   else if (debug_select_i && select_cmd && update_dr_i && !select_inhibit)       // Chain select
     module_id_reg <= module_id_in;
@@ -158,8 +157,8 @@ module adbg_top_wb #(
 
 ///////////////////////////////////////////////
 // Data input shift register
-  always @ (posedge tck_i,negedge trstn_i)
-    if      (!trstn_i                     ) input_shift_reg <= 'h0;
+  always @ (posedge tck_i, posedge tlr_i)
+    if      ( tlr_i                       ) input_shift_reg <= 'h0;
     else if ( debug_select_i && shift_dr_i) input_shift_reg <= {tdi_i, input_shift_reg[DBG_TOP_DATAREG_LEN-1:1]};
 
   /*
@@ -170,7 +169,7 @@ module adbg_top_wb #(
     .DATA_WIDTH  ( DATA_WIDTH  )
   ) i_dbg_wb (
     // JTAG signals
-    .trstn_i          ( trstn_i      ),
+    .tlr_i            ( tlr_i        ),
     .tck_i            ( tck_i        ),
     .module_tdo_o     ( tdo_busif    ),
     .tdi_i            ( tdi_i        ),
@@ -206,7 +205,6 @@ module adbg_top_wb #(
   )
   i_dbg_cpu_or1k (
     // JTAG signals
-   .trstn_i         ( trstn_i      ),
    .tck_i           ( tck_i        ),
    .module_tdo_o    ( tdo_cpu      ),
    .tdi_i           ( tdi_i        ),
@@ -234,7 +232,7 @@ module adbg_top_wb #(
 
 
 adbg_jsp_wb_module i_dbg_jsp (
-  .rst_i            (~trstn_i),
+  .rst_i            ( tlr_i),
 
   // JTAG signals
   .tck_i            ( tck_i),
