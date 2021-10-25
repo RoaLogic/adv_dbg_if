@@ -64,7 +64,7 @@ module adbg_ahb3_biu #(
   // AHB Master signals
   input                       HCLK,
                               HRESETn,
-  output                      HSEL,
+  output reg                  HSEL,
   output reg [ADDR_WIDTH-1:0] HADDR,
   output reg [DATA_WIDTH-1:0] HWDATA,
   input      [DATA_WIDTH-1:0] HRDATA,
@@ -108,6 +108,14 @@ module adbg_ahb3_biu #(
                start_toggle_hold, // hold start_toggle if AHB bus busy (not-ready)
                ahb_transfer_ack;  // AHB bus responded to data transfer
 
+
+   logic [           2:0] tck_hsize,
+                          tck_hburst;
+   logic                  tck_hwrite;
+   logic [ADDR_WIDTH-1:0] tck_haddr;
+   logic [DATA_WIDTH-1:0] tck_hwdata;
+
+
    //AHB FSM
    enum logic [1:0] {IDLE,ADDRESS,DATA} ahb_fsm_state;
 
@@ -127,10 +135,10 @@ module adbg_ahb3_biu #(
   always @(posedge biu_clk)
     if (biu_strb && biu_rdy)
       case (biu_word_size)
-         'h1    : HSIZE <= HSIZE_BYTE;
-         'h2    : HSIZE <= HSIZE_HWORD;
-         'h4    : HSIZE <= HSIZE_WORD;
-         default: HSIZE <= HSIZE_DWORD;
+         'h1    : tck_hsize <= HSIZE_BYTE;
+         'h2    : tck_hsize <= HSIZE_HWORD;
+         'h4    : tck_hsize <= HSIZE_WORD;
+         default: tck_hsize <= HSIZE_DWORD;
       endcase
 
 
@@ -140,9 +148,9 @@ generate
     always @(posedge biu_clk)
       if (biu_strb && biu_rdy)
         case (biu_word_size)
-           'h1    : HWDATA <= {4{biu_di[31 -:  8]}};
-           'h2    : HWDATA <= {2{biu_di[31 -: 16]}};
-           default: HWDATA <= biu_di;
+           'h1    : tck_hwdata <= {4{biu_di[31 -:  8]}};
+           'h2    : tck_hwdata <= {2{biu_di[31 -: 16]}};
+           default: tck_hwdata <= biu_di;
         endcase
   end
   else //DATA_WIDTH == 64
@@ -150,26 +158,21 @@ generate
     always @(posedge biu_clk)
       if (biu_strb && biu_rdy)
         case (biu_word_size)
-           'h1    : HWDATA <= {8{biu_di[63 -:  8]}};
-           'h2    : HWDATA <= {4{biu_di[63 -: 16]}};
-           'h4    : HWDATA <= {2{biu_di[63 -: 32]}};
-           default: HWDATA <= biu_di;
+           'h1    : tck_hwdata <= {8{biu_di[63 -:  8]}};
+           'h2    : tck_hwdata <= {4{biu_di[63 -: 16]}};
+           'h4    : tck_hwdata <= {2{biu_di[63 -: 32]}};
+           default: tck_hwdata <= biu_di;
         endcase
   end
 endgenerate
 
 
   // Latch input data on 'start' strobe, if ready.
-  always @(posedge biu_clk,posedge biu_rst)
-    if(biu_rst)
+  always @(posedge biu_clk)
+    if (biu_strb && biu_rdy)
     begin
-        HADDR  <= 'h0;
-        HWRITE <= 'b0;
-    end
-    else if (biu_strb && biu_rdy)
-    begin
-        HADDR  <=  biu_addr;
-        HWRITE <= ~biu_rw;
+        tck_haddr  <=  biu_addr;
+        tck_hwrite <= ~biu_rw;
     end 
 
 
@@ -210,8 +213,8 @@ endgenerate
     if (biu_rst) ahb_rstn_sync <= {$bits(ahb_rstn_sync){1'b0}};
     else         ahb_rstn_sync <= {1'b1,ahb_rstn_sync[$bits(ahb_rstn_sync)-1:1]};
 
-  assign ahb_rstn = ~(~HRESETn | ~ahb_rstn_sync[0]);
-
+//  assign ahb_rstn = ~(~HRESETn | ~ahb_rstn_sync[0]);
+  assign ahb_rstn = HRESETn;
 
   // synchronize the start strobe
   always @(posedge HCLK,negedge ahb_rstn)
@@ -304,30 +307,44 @@ endgenerate
 
   assign ahb_transfer_ack = HREADY & (ahb_fsm_state == DATA);
 
-  assign HSEL      = 1'b1;
   assign HPROT     = HPROT_DATA | HPROT_PRIVILEGED | HPROT_NON_BUFFERABLE | HPROT_NON_CACHEABLE;
   assign HMASTLOCK = 1'b0;
   
   always @ (posedge HCLK,negedge ahb_rstn)
     if (!ahb_rstn)
     begin
+        HSEL   <= 1'b0;
         HTRANS <= HTRANS_IDLE;
+	HSIZE  <= 'hx;
+	HWRITE <= 1'bx;
+	HADDR  <= 'hx;
+	HWDATA <= 'hx;
         ahb_fsm_state <= IDLE;
     end
     else
       case (ahb_fsm_state)
-         IDLE   : if (start_toggle || start_toggle_hold)
+         IDLE   : if ( (start_toggle || start_toggle_hold) && HREADY)
                   begin
+                      HSEL          <= 1'b1;
                       HTRANS        <= HTRANS_NONSEQ;
+		      HSIZE         <= tck_hsize;
+		      HWRITE        <= tck_hwrite;
+		      HADDR         <= tck_haddr;
                       ahb_fsm_state <= ADDRESS;
                   end
 
-         ADDRESS: begin
+         ADDRESS: if (HREADY)
+                  begin
+                      HWDATA        <= tck_hwdata;
                       HTRANS        <= HTRANS_IDLE;
                       ahb_fsm_state <= DATA;
                   end
 
-         DATA   : if (HREADY) ahb_fsm_state <= IDLE;
+         DATA   : if (HREADY)
+                  begin
+                      HSEL <= 1'b0;
+                      ahb_fsm_state <= IDLE;
+                  end
 
          default : begin
                        HTRANS        <= HTRANS_IDLE;
