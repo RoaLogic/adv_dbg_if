@@ -78,7 +78,7 @@ package adbg_jsp_16550_pkg;
     logic       ip;         // '0' if interrupt pending
   } iir_struct;
 
-  typedef struct packed {
+  typedef struct packed {   //                                    FCR Not Used, always 0
     logic [1:0] rx_trigger; // Rx Trigger
     logic       dma,        // DMA mode selected
                 txfifo_rst, // Tx FIFO reset
@@ -87,16 +87,16 @@ package adbg_jsp_16550_pkg;
   } fcr_struct;
 
   typedef struct packed {
-    logic       dlab,       // Divisor Latch Access bit
-                setbreak,
-                stickparity,
-                eps,        // Even parity select
-                pen,        // parity enable
-                stb;        // number of stop bits
-    logic [1:0] wls;        // Word Length Select
+    logic       dlab,       // Divisor Latch Access bit           Used
+                setbreak,   //                                    Not Used
+                stickparity,//                                    Not Used
+                eps,        // Even parity select                 Not Used
+                pen,        // parity enable                      Not Used
+                stb;        // number of stop bits                Not Used
+    logic [1:0] wls;        // Word Length Select                 Not Used
   } lcr_struct;
 
-  typedef struct packed {
+  typedef struct packed {   //                                     MCR Not Used, always 0
     logic       loop,
                 out2,
                 out1,
@@ -105,17 +105,17 @@ package adbg_jsp_16550_pkg;
   } mcr_struct;
 
   typedef struct packed {
-    logic       rxfifo_err, // Error in Rx FIFO
-                tempt,      // Transmitter empty
-                thre,       // Transmitter Hold Register empty
-                bi,         // Break Interrupt
-                fe,         // Framing Error
-                pe,         // Parity Error
-                oe,         // Overrun Error
-                dr;         // Data Ready
+    logic       rxfifo_err, // Error in Rx FIFO                    Not Used, always 0
+                tempt,      // Transmitter empty                   Used
+                thre,       // Transmitter Hold Register empty     Used
+                bi,         // Break Interrupt                     Not Used, always 0
+                fe,         // Framing Error                       Not Used, always 0
+                pe,         // Parity Error                        Not Used, always 0
+                oe,         // Overrun Error                       Not Used, always 0
+                dr;         // Data Ready                          Used
   } lsr_struct;
 
-  typedef struct packed {
+  typedef struct packed {   //                                     MSR Not Used, alway 0
     logic       dcd,        // Data Carrier Detect
                 ri,         // Ring Indicator
                 dsr,        // Data Set Ready
