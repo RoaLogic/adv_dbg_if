@@ -96,20 +96,23 @@ module adbg_jsp_apb_biu
   reg  [7:0] rdata;
   reg        wen_tff;
   reg        ren_tff;
+  reg        rst_n_ff; //latch rst_i on JTAG domain
+
  
   // Wires  
   wire       fifo_ack;
   wire [3:0] wr_bytes_free;
   wire [3:0] rd_bytes_avail;
-  wire [3:0] wr_bytes_avail;  // used to generate wr_fifo_not_empty
+  wire [3:0] wr_bytes_avail;     // used to generate wr_fifo_not_empty
   wire       rd_bytes_avail_not_zero;
   wire       ren_sff_out;   
   wire [7:0] rd_fifo_data_out;
   wire [7:0] data_to_extbus;
   wire [7:0] data_from_extbus;
   wire       wr_fifo_not_empty;  // this is for the WishBone interface LSR register
-  wire       rx_fifo_rst;  // rcvr in the APB sense, opposite most of the rest of this file
-  wire       tx_fifo_rst;  // ditto
+  wire       rx_fifo_rst;        // rcvr in the APB sense, opposite most of the rest of this file
+  wire       tx_fifo_rst;        // ditto
+  wire       rst_n_sync;         //Synchronize JTAG rst to PCLK domain
    
   // Control Signals (FSM outputs)
   reg        wda_rst;   // reset wdata_avail SFF
@@ -146,6 +149,12 @@ module adbg_jsp_apb_biu
 
   assign data_o = rdata;
 
+  // RST flipflop, assert async, release sync
+  always @(posedge tck_i, posedge rst_i)
+    if (rst_i) rst_n_ff <= 1'b0;
+    else       rst_n_ff <= 1'b1;
+
+
   // Write enable (WEN) toggle FF
   always @(posedge tck_i,posedge rst_i)
     if      (rst_i      ) wen_tff <= 'b0;
@@ -156,6 +165,7 @@ module adbg_jsp_apb_biu
   always @(posedge tck_i,posedge rst_i)
     if      (rst_i      ) ren_tff <= 'b0;
     else if (rd_strobe_i) ren_tff <= ~ren_tff;
+
 
   // Write data register
   always @(posedge tck_i,posedge rst_i)
@@ -177,7 +187,19 @@ module adbg_jsp_apb_biu
   always @(posedge PCLK,negedge PRESETn)
     if      (!PRESETn ) rdata <= 'h0;
     else if ( rdata_en) rdata <= rd_fifo_data_out;
-        
+
+
+  // RST SFF
+  syncflop rst_sff (
+    .RESET     ( rst_i      ),
+    .DEST_CLK  ( PCLK       ),
+    .D_SET     ( 1'b0       ),
+    .D_RST     ( 1'b0       ),
+    .TOGGLE_IN ( rst_n_ff   ),
+    .D_OUT     ( rst_n_sync )
+  );
+
+
   // WEN SFF
   syncflop wen_sff (
     .RESET     ( rst_i       ),
@@ -393,7 +415,8 @@ module adbg_jsp_apb_biu
   assign msr = 'hb;
 
   // Create the simple / combinatorial registers
-  assign rd_fifo_not_full = !(rd_bytes_avail == 4'h8);
+  // Use rst_sync to hold off writing to THR until JSP link is up
+  assign rd_fifo_not_full = ~(rd_bytes_avail == 4'h8) & rst_n_sync;
   assign lsr              = {1'b0, rd_fifo_not_full, rd_fifo_not_full, 4'h0, wr_fifo_not_empty};   
 
   // Create writeable registers
