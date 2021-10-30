@@ -287,8 +287,10 @@ module adbg_jsp_apb_biu
         else if (pop    ) next_rd_fsm_state = RD_POP;
         else              next_rd_fsm_state = RD_IDLE;
 
-      RD_POP:             next_rd_fsm_state = RD_LATCH; // new data at FIFO head, move to rdata in state LATCH
-
+//      RD_POP:             next_rd_fsm_state = RD_LATCH; // new data at FIFO head, move to rdata in state LATCH
+      RD_POP: if (fifo_wr) next_rd_fsm_state = RD_PUSH;
+              else         next_rd_fsm_state = RD_LATCH;
+	      
       RD_LATCH:
         if      (fifo_wr) next_rd_fsm_state = RD_PUSH;
         else if (pop    ) next_rd_fsm_state = RD_POP;
