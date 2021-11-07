@@ -182,10 +182,10 @@ module adbg_or1k_module #(
   wire                              status_reg_wr;
 
 
-  logic [         3:0] cpu_select;
-  logic [         3:0] cpu_select_in;
+  logic [           3:0] cpu_select;
+  logic [           3:0] cpu_select_in;
 
-  logic [NB_CORES-1:0] status_reg_data;
+  logic [NB_CORES*2-1:0] status_reg_data;
 
   //FSM states
   states module_state, module_next_state;
