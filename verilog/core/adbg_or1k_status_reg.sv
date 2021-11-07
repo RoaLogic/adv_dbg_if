@@ -140,7 +140,7 @@ generate
 
 
       // Value for read back
-      assign ctrl_reg_o[n +: 1] = {rst_reg[n], stall_reg[n]};
+      assign ctrl_reg_o[n +: 2] = {rst_reg[n], stall_reg[n]};
   end
 endgenerate
 
