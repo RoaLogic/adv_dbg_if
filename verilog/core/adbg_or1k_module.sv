@@ -92,6 +92,7 @@ module adbg_or1k_module #(
   output logic [NB_CORES-1:0]  [CPU_DATA_WIDTH     -1:0] cpu_data_o,
   input  logic [NB_CORES-1:0]                            cpu_bp_i,
   output logic [NB_CORES-1:0]                            cpu_stall_o,
+  output logic [NB_CORES-1:0]                            cpu_rst_o,
   output logic [NB_CORES-1:0]                            cpu_stb_o,
   output logic [NB_CORES-1:0]                            cpu_we_o,
   input  logic [NB_CORES-1:0]                            cpu_ack_i
@@ -124,7 +125,7 @@ module adbg_or1k_module #(
   reg  [                       3:0] operation;                // holds the current command (rd/wr, word size)
   reg  [                      31:0] data_out_shift_reg;       // parallel-load output shift register
   reg  [DBG_OR1K_REGSELECT_LEN-1:0] internal_register_select; // Holds index of currently selected register
-  wire [NB_CORES              -1:0] internal_reg_status;      // Holds CPU stall and reset status - signal is output of separate module
+  wire [NB_CORES*2            -1:0] internal_reg_status;      // Holds CPU stall and reset status - signal is output of separate module
 
 
   // Control signals for the various counters / registers / state machines
@@ -206,7 +207,7 @@ module adbg_or1k_module #(
   assign data_to_biu     = {tdi_i,data_register_i[DBG_OR1K_DATAREG_LEN-1 -: 31]};
 
   assign reg_select_data = data_register_i[DBG_OR1K_DATAREG_LEN - 6                         -: DBG_OR1K_REGSELECT_LEN];
-  assign status_reg_data = data_register_i[DBG_OR1K_DATAREG_LEN -10 -DBG_OR1K_REGSELECT_LEN -: NB_CORES]; //data is sent first, then module_cmd, operation, cpu_select
+  assign status_reg_data = data_register_i[DBG_OR1K_DATAREG_LEN -10 -DBG_OR1K_REGSELECT_LEN -: NB_CORES*2]; //data is sent first, then module_cmd, operation, cpu_select
 
 
   ////////////////////////////////////////////////
@@ -248,9 +249,9 @@ module adbg_or1k_module #(
    always_comb
     case(internal_register_select)
        DBG_OR1K_INTREG_STATUS:
-              data_from_internal_reg = {{($bits(data_from_internal_reg)-NB_CORES){1'b0}}, internal_reg_status};
+              data_from_internal_reg = {{($bits(data_from_internal_reg)-NB_CORES*2){1'b0}}, internal_reg_status};
        default:
-              data_from_internal_reg = {{($bits(data_from_internal_reg)-NB_CORES){1'b0}}, internal_reg_status};
+              data_from_internal_reg = {{($bits(data_from_internal_reg)-NB_CORES*2){1'b0}}, internal_reg_status};
     endcase
 
 
@@ -275,7 +276,8 @@ module adbg_or1k_module #(
     .cpu_clk_i   ( cpu_clk_i           ),
     .cpu_rstn_i  ( cpu_rstn_i          ),
     .ctrl_reg_o  ( internal_reg_status ),
-    .cpu_stall_o ( cpu_stall_o         ) );
+    .cpu_stall_o ( cpu_stall_o         ),
+    .cpu_rst_o   ( cpu_rst_o           ) );
 
 
   ///////////////////////////////////////////////
