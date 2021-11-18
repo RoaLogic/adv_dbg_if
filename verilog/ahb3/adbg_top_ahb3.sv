@@ -101,6 +101,7 @@ module adbg_top_ahb3 #(
   output [NB_CORES-1:0][DATA_WIDTH    -1:0] cpu_data_o,
   input  [NB_CORES-1:0]                     cpu_bp_i,
   output [NB_CORES-1:0]                     cpu_stall_o,
+  output [NB_CORES-1:0]                     cpu_rst_o,
   output [NB_CORES-1:0]                     cpu_stb_o,
   output [NB_CORES-1:0]                     cpu_we_o,
   input  [NB_CORES-1:0]                     cpu_ack_i
@@ -231,6 +232,7 @@ module adbg_top_ahb3 #(
     .cpu_data_o      ( cpu_data_o  ),
     .cpu_bp_i        ( cpu_bp_i    ),
     .cpu_stall_o     ( cpu_stall_o ),
+    .cpu_rst_o       ( cpu_rst_o   ),
     .cpu_stb_o       ( cpu_stb_o   ),
     .cpu_we_o        ( cpu_we_o    ),
     .cpu_ack_i       ( cpu_ack_i   )
