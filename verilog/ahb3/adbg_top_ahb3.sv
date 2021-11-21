@@ -146,8 +146,7 @@ module adbg_top_ahb3 #(
   //////////////////////////////////////////////////////////
   // Module select register and select signals
   always @(posedge tck_i, posedge tlr_i)
-  if      (tlr_i)
-    module_id_reg <= 'h0;
+  if      (tlr_i)  module_id_reg <= 'h0;
   else if (debug_select_i && select_cmd && update_dr_i && !select_inhibit)       // Chain select
     module_id_reg <= module_id_in;
 
