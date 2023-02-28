@@ -39,6 +39,7 @@
 
 // Module interface
 module adbg_jsp_apb_module 
+import adbg_jsp_pkg::*;
 (
   input                                         rst_i,
 
@@ -71,14 +72,6 @@ module adbg_jsp_apb_module
 
   output                                        int_o
 );
-  
-  //////////////////////////////////////////////////////////////////
-  //
-  // Constants
-  //
-  import adbg_jsp_pkg::*;
-
-
   //////////////////////////////////////////////////////////////////
   //
   // Variables

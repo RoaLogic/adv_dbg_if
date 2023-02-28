@@ -49,6 +49,7 @@
 
 // Top module
 module adbg_jsp_apb_biu
+import adbg_jsp_16550_pkg::*;
 (
   // Debug interface signals
   input         tck_i,
@@ -80,8 +81,6 @@ module adbg_jsp_apb_biu
   //
   // Constants
   //
-  import adbg_jsp_16550_pkg::*;
-
   typedef enum logic [1:0] {RD_IDLE,RD_PUSH,RD_POP,RD_LATCH} rd_states;
   typedef enum logic [1:0] {WR_IDLE,WR_PUSH,WR_POP         } wr_states;
 

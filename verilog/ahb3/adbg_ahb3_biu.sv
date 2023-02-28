@@ -42,7 +42,9 @@
 //
 
 // Top module
-module adbg_ahb3_biu #(
+module adbg_ahb3_biu
+import adbg_ahb3_pkg::*;
+#(
   parameter LITTLE_ENDIAN = 1,
   parameter ADDR_WIDTH    = 32,
   parameter DATA_WIDTH    = 32
@@ -77,13 +79,6 @@ module adbg_ahb3_biu #(
   input                       HREADY,
   input                       HRESP
 );
-  //////////////////////////////////////////////////////////////////
-  //
-  // Constants
-  //
-  import adbg_ahb3_pkg::*;
-
-
   //////////////////////////////////////////////////////////////////
   //
   // Variables

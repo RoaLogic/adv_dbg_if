@@ -44,7 +44,9 @@
 //
 
 
-module adbg_ahb3_module #(
+module adbg_ahb3_module
+import adbg_ahb3_pkg::*;
+#(
   parameter ADDR_WIDTH = 32,
   parameter DATA_WIDTH = 32
 )
@@ -80,13 +82,6 @@ module adbg_ahb3_module #(
   input                     HREADY,
   input                     HRESP
 );
-  //////////////////////////////////////////////////////////////////
-  //
-  // Constants
-  //
-  import adbg_ahb3_pkg::*;
-
-
   //////////////////////////////////////////////////////////////////
   //
   // Variables
