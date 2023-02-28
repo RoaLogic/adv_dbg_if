@@ -41,6 +41,7 @@
 
 // Module interface
 module adbg_jsp_module_core 
+import adbg_jsp_pkg::*;
 (
   input                                          rst_i,
 
@@ -82,10 +83,8 @@ module adbg_jsp_module_core
 
   //////////////////////////////////////////////////////////////////
   //
-  // Constants
+  // Typedefs
   //
-  import adbg_jsp_pkg::*;
-
   //FSM states
   typedef enum logic [1:0] {STATE_wr_idle,STATE_wr_wait,STATE_wr_counts,STATE_wr_xfer} states_wr;
   typedef enum logic [1:0] {STATE_rd_idle,STATE_rd_counts,STATE_rd_rdack,STATE_rd_xfer} states_rd;

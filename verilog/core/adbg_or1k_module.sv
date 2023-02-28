@@ -63,7 +63,9 @@
 
 
 // Module interface
-module adbg_or1k_module #(
+module adbg_or1k_module
+import adbg_or1k_pkg::*;
+#(
   parameter NB_CORES = 4,
   parameter CPU_ADDR_WIDTH = 16,
   parameter CPU_DATA_WIDTH = 32
@@ -101,8 +103,6 @@ module adbg_or1k_module #(
   //
   // Constants
   //
-  import adbg_or1k_pkg::*;
-
   //FSM states
   typedef enum logic [3:0] {STATE_idle,
                             STATE_Rbegin,STATE_Rready,STATE_Rstatus,STATE_Rburst,
