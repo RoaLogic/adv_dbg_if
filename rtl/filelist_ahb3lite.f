@@ -15,5 +15,4 @@ verilog/ahb3/adbg_ahb3_biu.sv
 verilog/ahb3/adbg_ahb3_module.sv
 verilog/ahb3/adbg_jsp_apb_biu.sv
 verilog/ahb3/adbg_jsp_apb_module.sv
-verilog/core/adbg_crc32.v
 verilog/ahb3/adbg_top_ahb3.sv
